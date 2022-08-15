@@ -1,7 +1,12 @@
 package main
 
-import "fmt"
+import (
+	"Guthi/node"
+	"flag"
+)
 
 func main() {
-	fmt.Printf("Seperate Network Module Initiation")
+	port := flag.Int("port", 6969, "Enter port number")
+	protocol := flag.String("protocol", "tcp", "Enter port number")
+	node.StartServer(*port, *protocol)
 }
