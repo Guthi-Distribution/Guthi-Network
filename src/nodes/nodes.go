@@ -11,6 +11,7 @@ import (
 type NetworkNode struct {
 	NodeID int
 	Name   string
+	// TCP Addr is akin to socket. So, its only used when its listening for connection, right?
 	Socket *net.TCPAddr // TCP address of the current node
 }
 
@@ -51,24 +52,4 @@ func IntiateTCPConnection(node *NetworkNode) *net.TCPConn {
 		return nil
 	}
 	return tcp_con
-}
-
-func ListenForTCPConnection(node *NetworkNode) {
-	listener, err := net.ListenTCP("tcp", node.Socket)
-
-	// The call to listen always blocks
-	// There's no way to get notified when there is a pending connection in Go?
-	for {
-		conn, _ := listener.AcceptTCP()
-		if err != nil {
-			fmt.Println("Failed to Accept the incoming connection")
-			break
-		}
-		go HandleTCPConnection(conn)
-	}
-	listener.Close()
-}
-
-func HandleTCPConnection(tcp_connection *net.TCPConn) {
-
 }
