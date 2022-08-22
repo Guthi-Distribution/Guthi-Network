@@ -36,7 +36,9 @@ type NetworkPlatform struct {
 
 type CacheEntry struct {
 	connection *net.TCPConn
-	node_ref   *nodes.NetworkNode
+	// the network nodes are stored in array statically, so using ID as ref
+	node_ref    *nodes.NetworkNode
+	node_ref_id int
 }
 
 type NodeConnectionCache struct {
@@ -56,7 +58,7 @@ func ConnectToNetwork(node *nodes.NetworkNode) bool {
 	}
 
 	// TODO :: Perform other necessary actions to get in sync with the network
-	entry := CacheEntry{tcp_connection, node}
+	entry := CacheEntry{tcp_connection, node, node.NodeID}
 	net_platform.connection_caches = append(net_platform.connection_caches, entry)
 
 	SyncWithNetwork()
@@ -71,6 +73,7 @@ func SyncWithNetwork() uint16 {
 	// Receive information about connected nodes from its neighbor nodes
 	msg := "Send nudes"
 	var discovered_nodes uint16
+
 	for _, cached := range net_platform.connection_caches {
 
 		// This should be bidirectional
@@ -83,6 +86,7 @@ func SyncWithNetwork() uint16 {
 		// TODO :: Send and receive msg and interpret it
 		// Wait for it them to recieve message and compare to them
 		// Return the IP Address and port number of other nodes which are listening for p2p connection
+		// Read the message and identify new nodes in the network
 		discovered_nodes++
 	}
 	return discovered_nodes
@@ -132,6 +136,42 @@ func main() {
 	}
 
 	go ListenForTCPConnection(&net_platform.self_node)
+
+	// Its working for now
+	for {
+		time.Sleep(3 * time.Second)
+		fmt.Println("\n\n\n ------------------------------- Printing node information ---------------------------- ")
+		fmt.Println("TimeStamp : ", time.Now())
+
+		fmt.Println("Connection cache contains : ", len(net_platform.connection_caches))
+
+		for i, node := range net_platform.connected_nodes {
+			fmt.Println(i+1, ". : ", node)
+		}
+	}
+}
+
+func ProcessConnections() {
+	// Process other currently running connections
+	for {
+		time.Sleep(100 * time.Millisecond)
+		for _, conn := range net_platform.connection_caches {
+			// If there's message to be sent to that node send it here.
+			// Else, receive message here
+			msg := make([]byte, 2048)
+			len, err := conn.connection.Read(msg)
+			if err != nil {
+				// Connecton has been closed from client side, so drop the connection from the cache list and possibly known nodes (after certain time has elapsed)
+				// where's the remove method in slice ??????
+			} else {
+				if len != 0 {
+					fmt.Println("Message recevied from : ", conn.node_ref_id, " :-> ", string(msg[:len]))
+					// Echo back the same message to client
+					conn.connection.Write(msg[:len])
+				}
+			}
+		}
+	}
 }
 
 // For self
@@ -140,6 +180,7 @@ func ListenForTCPConnection(node *nodes.NetworkNode) {
 
 	// The call to listen always blocks
 	// There's no way to get notified when there is a pending connection in Go?
+	go ProcessConnections()
 	for {
 		conn, _ := listener.AcceptTCP()
 		if err != nil {
@@ -162,4 +203,8 @@ func HandleTCPConnection(tcp_connection *net.TCPConn) {
 	tcp_addr := tcp_connection.RemoteAddr().(*net.TCPAddr)
 	new_node := nodes.NetworkNode{rand.Intn(1000), "unknown", tcp_addr}
 	net_platform.connected_nodes = append(net_platform.connected_nodes, new_node)
+
+	// Operation on connection caches are omitted for now
+	cache_entry := CacheEntry{tcp_connection, nil, new_node.NodeID}
+	net_platform.connection_caches = append(net_platform.connection_caches, cache_entry)
 }

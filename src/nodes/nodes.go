@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+
+	"../events"
 )
 
 // So each node should work as server and client simultaneously
@@ -53,3 +55,12 @@ func IntiateTCPConnection(node *NetworkNode) *net.TCPConn {
 	}
 	return tcp_con
 }
+
+// Implement a event queue here
+type Queue struct {
+	capacity uint
+	len      uint
+	data     []events.Events
+}
+
+// To be implemented later on
