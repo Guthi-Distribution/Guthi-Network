@@ -67,7 +67,6 @@ func ConnectToNetwork(node *nodes.NetworkNode) bool {
 // Onto nodes discovery
 // How to decide if networks are in sync? ans -> After certain time lol
 // Should this function be called on regular basis? On certain interval or not?
-
 func SyncWithNetwork() uint16 {
 	// Receive information about connected nodes from its neighbor nodes
 	msg := "Send nudes"
@@ -200,7 +199,11 @@ func HandleTCPConnection(tcp_connection *net.TCPConn) {
 	// Like some memory allocated by another runtime too.. lol
 
 	tcp_addr := tcp_connection.RemoteAddr().(*net.TCPAddr)
-	new_node := nodes.NetworkNode{rand.Intn(1000), "unknown", tcp_addr}
+	new_node := nodes.NetworkNode{
+		NodeID: rand.Intn(1000),
+		Name:   "unknown",
+		Socket: tcp_addr,
+	}
 	net_platform.connected_nodes = append(net_platform.connected_nodes, new_node)
 
 	// Operation on connection caches are omitted for now
