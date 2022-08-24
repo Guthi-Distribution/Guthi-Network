@@ -3,14 +3,13 @@ package main
 // There should be one univeral listening port
 
 import (
+	"GuthiNetwork/nodes"
 	"fmt"
 	"math/rand"
 	"net"
 	"os"
 	"sync"
 	"time"
-
-	"./src/nodes"
 )
 
 // Go is such a stupid language, All hail C++

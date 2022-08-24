@@ -1,3 +1,3 @@
-module Network
+module GuthiNetwork
 
 go 1.18

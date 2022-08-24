@@ -1,11 +1,10 @@
 package nodes
 
 import (
+	"GuthiNetwork/events"
 	"fmt"
 	"net"
 	"os"
-
-	"../events"
 )
 
 // So each node should work as server and client simultaneously

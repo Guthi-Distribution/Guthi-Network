@@ -1,4 +1,4 @@
-package GuthiEvent
+package events
 
 type NodeEvents int
 
