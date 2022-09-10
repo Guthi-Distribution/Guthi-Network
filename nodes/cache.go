@@ -15,7 +15,6 @@ type Queue struct {
 
 // single cache entry
 type CacheEntry struct {
-	Connection *net.TCPConn
 	// the network nodes are stored in array statically, so using ID as ref
 	node_ref    *NetworkNode
 	node_ref_id uint64
@@ -24,7 +23,6 @@ type CacheEntry struct {
 
 func CreateCacheEntry(connection *net.TCPConn, node_ref *NetworkNode, node_red_id uint64) CacheEntry {
 	cache_entry := CacheEntry{
-		Connection:  connection,
 		node_ref:    node_ref,
 		node_ref_id: node_red_id,
 	}
