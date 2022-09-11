@@ -31,3 +31,12 @@ func (self *NetworkPlatform) GetNodeAddress() string {
 	fmt.Println(self.Self_node.Socket.String())
 	return self.Self_node.Socket.String()
 }
+
+func (self *NetworkPlatform) knows(addr string) bool {
+	for _, node := range self.Connected_nodes {
+		if node.Socket.String() == addr {
+			return true
+		}
+	}
+	return false
+}

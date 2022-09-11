@@ -194,6 +194,11 @@ func HandleGetNodes(request []byte, net_platform *NetworkPlatform) {
 		}
 
 		sendDataToAddress(payload.AddrFrom, append(CommandToBytes("node"), GobEncode(send_payload)...), net_platform)
+
+		// if the address is not known for this node, it is fetched
+		if net_platform.knows(payload.AddrFrom) {
+			SendGetNode(payload.AddrFrom, net_platform)
+		}
 	}
 }
 
