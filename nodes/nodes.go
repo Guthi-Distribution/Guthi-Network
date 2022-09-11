@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"hash/crc64"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -27,12 +28,12 @@ type GetAddress struct {
 
 type GetNodes struct {
 	AddrFrom string
-	address  []string
+	Address  []string
 }
 
 type NodesRequest struct {
 	AddrFrom string
-	nodes    []NetworkNode
+	Nodes    []NetworkNode
 }
 
 type RequestMessage struct {
@@ -111,11 +112,23 @@ func CommandToBytes(cmd string) []byte {
 	return bytes[:]
 }
 
+func BytesToCommand(bytes []byte) string {
+	var cmd []byte
+
+	for _, b := range bytes {
+		if b != 0x0 {
+			cmd = append(cmd, b)
+		}
+	}
+
+	return fmt.Sprintf("%s", cmd)
+}
+
 func sendData(node *NetworkNode, data []byte, net_platform *NetworkPlatform) {
 	conn, err := net.Dial(node.Socket.Network(), node.Socket.String())
 
 	if err != nil {
-		log.Printf("Connection Failed, for node %s", node.Name)
+		log.Printf("Connection Failed, for node %s\n", node.Name)
 		net_platform.RemoveNode(*node)
 		return
 	}
@@ -123,26 +136,40 @@ func sendData(node *NetworkNode, data []byte, net_platform *NetworkPlatform) {
 
 	_, err = conn.Write(data)
 	if err != nil {
-		log.Printf("Sending data failed, error: %s", err.Error())
+		log.Printf("Sending data failed, error: %s\n", err.Error())
 	}
 }
 
-func SendGetNode(addr string, net_platform *NetworkPlatform) {
+func sendDataToAddress(addr string, data []byte, net_platform *NetworkPlatform) {
 	conn, err := net.Dial("tcp", addr)
 
-	address := make([]string, 1)
-	address[0] = addr
+	if err != nil {
+		log.Printf("Connection Failed, for node with address: %s\n", addr)
+		//TODO: implement remove node for address too
+		// Difficulty: Easy
+		// net_platform.RemoveNode(*node)
+		return
+	}
+	defer conn.Close()
+
+	_, err = io.Copy(conn, bytes.NewReader(data))
+
+	if err != nil {
+		log.Panic(err)
+	}
+}
+
+// send the get node request to a particular node
+func SendGetNode(addr string, net_platform *NetworkPlatform) {
 	payload := GetNodes{
 		AddrFrom: net_platform.Self_node.Socket.String(),
-		address:  address,
+		Address: []string{
+			addr,
+		},
 	}
 	data := GobEncode(payload)
 	data = append(CommandToBytes("getnodes"), data...)
-	if err != nil {
-		log.Fatalf("Sending data failed, error: %s", err.Error())
-	}
-
-	_, err = conn.Write(data)
+	sendDataToAddress(addr, data, net_platform)
 }
 
 // sends all the node address
@@ -158,22 +185,26 @@ func HandleGetNodes(request []byte, net_platform *NetworkPlatform) {
 	var payload GetNodes
 	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
 
-	if payload.address[0] == net_platform.Self_node.Socket.Network() {
+	fmt.Printf("Sending nodes to address: %s\n", payload.AddrFrom)
+	if payload.Address[0] == net_platform.Self_node.Socket.String() {
+		// if the receiving address is the self address, then it is send
 		send_payload := NodesRequest{
 			AddrFrom: net_platform.GetNodeAddress(),
-			nodes:    []NetworkNode{*net_platform.Self_node},
+			Nodes:    []NetworkNode{*net_platform.Self_node},
 		}
 
-		GobEncode(send_payload)
-		// sendData(payload.AddrFrom, GobEncode(send_payload), net_platform)
+		sendDataToAddress(payload.AddrFrom, append(CommandToBytes("node"), GobEncode(send_payload)...), net_platform)
 	}
 }
 
-func HandleGetNode(request []byte) {
-
+func HandleNode(request []byte, net_platform *NetworkPlatform) {
+	var payload NodesRequest
+	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
+	fmt.Printf("Address received from %s\n", payload.AddrFrom)
+	net_platform.Connected_nodes = append(net_platform.Connected_nodes, payload.Nodes...)
 }
 
-func HandleTCPConnection(tcp_connection *net.TCPConn, net_platform *NetworkPlatform) {
+func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) {
 	// store the information about the newly connected node into the net_platform struct
 	// So connection established, now retrieve information about the host
 	// TODO :: Test this implementation, left for Go experts
@@ -186,16 +217,17 @@ func HandleTCPConnection(tcp_connection *net.TCPConn, net_platform *NetworkPlatf
 	// cache_entry := CreateCacheEntry(tcp_connection, nil, new_node.NodeID)
 	// net_platform.Connection_caches = append(net_platform.Connection_caches, cache_entry)
 
-	request, err := ioutil.ReadAll(tcp_connection)
+	request, err := ioutil.ReadAll(conn)
 
-	defer tcp_connection.Close()
+	// defer tcp_connection.Close()
 	if err != nil {
 		log.Printf(err.Error())
 	}
+	defer conn.Close()
 
 	// first 32 bytes to hold the commnd
 	// TODO: Format the header data
-	command := string(request[:COMMAND_LENGTH])
+	command := BytesToCommand(request[:COMMAND_LENGTH])
 	log.Printf("Command: %s", command)
 
 	switch command {
@@ -209,6 +241,11 @@ func HandleTCPConnection(tcp_connection *net.TCPConn, net_platform *NetworkPlatf
 
 	case "getnodes":
 		HandleGetNodes(request[COMMAND_LENGTH:], net_platform)
+		break
+
+	// for receiving a node
+	case "node":
+		HandleNode(request[COMMAND_LENGTH:], net_platform)
 		break
 	}
 }
@@ -245,13 +282,14 @@ func ProcessConnections(net_platform *NetworkPlatform) {
 
 // For self
 func ListenForTCPConnection(net_platform *NetworkPlatform) {
-	listener, err := net.ListenTCP(net_platform.Self_node.Socket.Network(), net_platform.Self_node.Socket)
-
+	listener, err := net.Listen("tcp", net_platform.Self_node.Socket.String())
 	if err != nil {
-		log.Fatalf("Listener error: %s", err.Error())
+		log.Fatalf("Listener error: %s\n", err.Error())
 	}
+	defer listener.Close()
 
 	if net_platform.Self_node.Socket.Port == 6969 {
+		log.Printf("Sending get nodes request")
 		SendGetNode("127.0.0.1:7000", net_platform)
 	}
 
@@ -259,7 +297,7 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 	// There's no way to get notified when there is a pending connection in Go?
 	// go ProcessConnections(net_platform)
 	for {
-		conn, _ := listener.AcceptTCP()
+		conn, _ := listener.Accept()
 		if err != nil {
 			fmt.Printf("Failed to Accept the incoming connection.  Error: %s\n", err.Error())
 			break
