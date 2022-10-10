@@ -3,15 +3,11 @@ package main
 // There should be one univeral listening port
 
 import (
-	"GuthiNetwork/nodes"
-	"flag"
 	"fmt"
 	"time"
+
+	"./nodes"
 )
-
-// Go is such a stupid language, All hail C++
-
-// tf is Rune ... lol
 func wait_loop(elapsed time.Duration) {
 	for {
 		fmt.Printf("\r")
@@ -30,7 +26,7 @@ func InitializePlatform() bool {
 	// Add localhost to the net_platform here
 	// TODO :: Maybe choose a different port for local connection and retry to find new unassigned port
 	// TODO :: Use public IP
-	node := nodes.CreateNetworkNode("localhost", "localhost", 8000)
+	node := nodes.CreateNetworkNode("localhost", "localhost", 8080)
 	net_platform.Connected_nodes = append(net_platform.Connected_nodes, *node)
 
 	net_platform.Self_node = node
@@ -40,10 +36,9 @@ func InitializePlatform() bool {
 }
 
 func main() {
-	var port int
-	flag.IntVar(&port, "port", 6969, "-port")
-	flag.Parse()
-	net_platform.Self_node = nodes.CreateNetworkNode("localhost", "127.0.0.1", port)
-	net_platform.GetNodeAddress()
+	InitializePlatform()
 	nodes.ListenForTCPConnection(&net_platform)
+
+	// Check the connection by launching multiple instance of nc 
+	
 }

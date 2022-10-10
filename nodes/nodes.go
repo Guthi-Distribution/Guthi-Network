@@ -3,17 +3,17 @@ package nodes
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"hash/crc64"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"time"
 )
 
 const (
-	COMMAND_LENGTH = 32
+	COMMAND_LENGTH = 16
 )
 
 // var net_platform NetworkPlatform
@@ -181,6 +181,20 @@ func HandleUnknownCommand() {
 
 }
 
+func ReplyBack(msg []byte, conn net.Conn, net_platform *NetworkPlatform) {
+	wr, err := conn.Write(msg)
+	if err != nil {
+		fmt.Printf("Failed to reply back to connection", conn)
+	}
+	fmt.Printf("Bytes written back %d.\n", wr)
+}
+
+func HandleResources(msg []byte, conn net.Conn, net_platform *NetworkPlatform) {
+	// Files are handled by the C++ runtime
+	//  Interface with C++
+	log.Println("Resource requested ", msg)
+}
+
 func HandleGetNodes(request []byte, net_platform *NetworkPlatform) {
 	var payload GetNodes
 	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
@@ -209,31 +223,38 @@ func HandleNode(request []byte, net_platform *NetworkPlatform) {
 	net_platform.Connected_nodes = append(net_platform.Connected_nodes, payload.Nodes...)
 }
 
-func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) {
-	// store the information about the newly connected node into the net_platform struct
-	// So connection established, now retrieve information about the host
-	// TODO :: Test this implementation, left for Go experts
-	// Assuming that Garbage collected language can handle anything, literally anything
-	// Like some memory allocated by another runtime too.. lol
-	// new_node := CreateNetworkNode("unknown", "127.0.0.1", 8000)
-	// net_platform.Connected_nodes = append(net_platform.Connected_nodes, *new_node)
-
-	// // Operation on connection caches are omitted for now
-	// cache_entry := CreateCacheEntry(tcp_connection, nil, new_node.NodeID)
-	// net_platform.Connection_caches = append(net_platform.Connection_caches, cache_entry)
-
-	request, err := ioutil.ReadAll(conn)
+// TODO :: Should read be handled concurrently via go routines?
+func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) bool {
+	// request, err := io.ReadAll(conn)
+	request := make([]byte, 2048)
+	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	len, err := io.ReadAtLeast(conn, request, COMMAND_LENGTH)
+	if len == 0 {
+		return true
+	}
 
 	// defer tcp_connection.Close()
 	if err != nil {
+		// Close the connection
+		if errors.Is(err, net.ErrClosed) {
+			log.Printf("Connection closed by the peer")
+			return false
+		}
 		log.Printf(err.Error())
+		return false
 	}
-	defer conn.Close()
-
-	// first 32 bytes to hold the commnd
+	// first 32 bytes to hold the command
 	// TODO: Format the header data
-	command := BytesToCommand(request[:COMMAND_LENGTH])
-	log.Printf("Command: %s", command)
+
+	l := 0
+	for _, b := range request {
+		if b == 32 || l == len {
+			break
+		}
+		l++
+	}
+	command := BytesToCommand(request[:l])
+	log.Printf("Command: %s %d", command, l)
 
 	switch command {
 	default:
@@ -252,7 +273,15 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) {
 	case "node":
 		HandleNode(request[COMMAND_LENGTH:], net_platform)
 		break
+
+	case "echo":
+		ReplyBack(request[l+1:len], conn, net_platform)
+		break
+	case "getresources":
+		HandleResources(request[l+1:len], conn, net_platform)
+		break
 	}
+	return true
 }
 
 // Gob Encode
@@ -273,16 +302,29 @@ func GobEncode(data interface{}) []byte {
 func ProcessConnections(net_platform *NetworkPlatform) {
 	// Process other currently running connections
 	for {
-		time.Sleep(1000 * time.Millisecond)
-		for _, caches := range net_platform.Connection_caches {
-			// If there's message to be sent to that node send it here.
-			// Else, receive message here
-
-			msg := make([]byte, 2048)
-			// Echo back the same message to client
-			sendData(caches.node_ref, msg, net_platform)
+		time.Sleep(100 * time.Millisecond)
+		for i, caches := range net_platform.Connection_caches {
+			result := HandleTCPConnection(caches.connection, net_platform)
+			if !result {
+				// Remove the connection from the cache,bruh bruh. WTF. Khai element remove garney function
+				temp := net_platform.Connection_caches
+				temp[i] = temp[len(net_platform.Connection_caches)-1]
+				net_platform.Connection_caches = temp[:len(temp)-1]
+			}
 		}
 	}
+}
+
+func AcceptConnection(conn net.Conn, net_platform *NetworkPlatform) {
+	// store the information about the newly connected node into the net_platform struct
+	new_node := CreateNetworkNode("unknown", "127.0.0.1", 8000)
+	net_platform.Connected_nodes = append(net_platform.Connected_nodes, *new_node)
+
+	// Operation on connection caches are omitted for now
+	cache_entry := CreateCacheEntry(conn, nil, new_node.NodeID)
+	net_platform.Connection_caches = append(net_platform.Connection_caches, cache_entry)
+
+	log.Print("Connection accepted", conn)
 }
 
 // For self
@@ -293,21 +335,22 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 	}
 	defer listener.Close()
 
-	if net_platform.Self_node.Socket.Port == 6969 {
-		log.Printf("Sending get nodes request")
-		SendGetNode("127.0.0.1:7000", net_platform)
-	}
+	// if net_platform.Self_node.Socket.Port == 6969 {
+	// 	log.Printf("Sending get nodes request")
+	// 	SendGetNode("127.0.0.1:7000", net_platform)
+	// }
 
 	// The call to listen always blocks
 	// There's no way to get notified when there is a pending connection in Go?
-	// go ProcessConnections(net_platform)
+	go ProcessConnections(net_platform)
+	log.Printf("Localhost is listening ... \n")
 	for {
 		conn, _ := listener.Accept()
 		if err != nil {
 			fmt.Printf("Failed to Accept the incoming connection.  Error: %s\n", err.Error())
 			break
 		}
-		go HandleTCPConnection(conn, net_platform)
+		go AcceptConnection(conn, net_platform)
 	}
 }
 
