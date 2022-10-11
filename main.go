@@ -34,6 +34,7 @@ func main() {
 	mem.WriteSharedMemory([]byte(s))
 	defer mem.RemoveSharedMemory()
 	// var n int
-
+	mem.WriteSharedMemory([]byte("Hello there again mfers"))
 	mem.ReadSharedMemory()
+	defer mem.RemoveSharedMemory()
 }
