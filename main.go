@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"./nodes"
+	"GuthiNetwork/nodes"
 )
+
+// show loading screen, causing hanging of editor though?
 func wait_loop(elapsed time.Duration) {
 	for {
 		fmt.Printf("\r")
@@ -39,6 +41,8 @@ func main() {
 	InitializePlatform()
 	nodes.ListenForTCPConnection(&net_platform)
 
-	// Check the connection by launching multiple instance of nc 
-	
+	// nodes.SendEcho("127.0.0.1:8080", &net_platform)
+
+	// Check the connection by launching multiple instance of nc
+
 }

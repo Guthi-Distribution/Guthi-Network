@@ -4,7 +4,7 @@ import (
 	"net"
 	"time"
 
-	"../events"
+	"GuthiNetwork/events"
 )
 
 // Implement a event queue here
@@ -23,11 +23,12 @@ type CacheEntry struct {
 	time        time.Time // timestamp for when the cache was written
 }
 
-func CreateCacheEntry(connection net.Conn, node_ref *NetworkNode, node_red_id uint64) CacheEntry {
+func CreateCacheEntry(connection net.Conn, node_ref *NetworkNode, node_ref_id uint64) CacheEntry {
 	cache_entry := CacheEntry{
-		node_ref:    node_ref,
-		node_ref_id: node_red_id,
-		connection:  connection,
+		node_ref,
+		node_ref_id,
+		connection,
+		time.Now(), // might need to consider a distrubted time system
 	}
 
 	return cache_entry

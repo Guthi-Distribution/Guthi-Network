@@ -1,7 +1,6 @@
 package nodes
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -27,11 +26,25 @@ func (self *NetworkPlatform) RemoveNode(node NetworkNode) {
 	self.Connected_nodes = new_arr
 }
 
+func (self *NetworkPlatform) RemoveNodeWithAddress(addr string) {
+	new_arr := make([]NetworkNode, len(self.Connected_nodes))
+	j := 0
+
+	for _, elem := range self.Connected_nodes {
+		if elem.Socket.String() != addr {
+			new_arr[j] = elem
+			j++
+		}
+	}
+
+	self.Connected_nodes = new_arr
+}
+
 func (self *NetworkPlatform) GetNodeAddress() string {
-	fmt.Println(self.Self_node.Socket.String())
 	return self.Self_node.Socket.String()
 }
 
+// see if the node knows a node with address
 func (self *NetworkPlatform) knows(addr string) bool {
 	for _, node := range self.Connected_nodes {
 		if node.Socket.String() == addr {
