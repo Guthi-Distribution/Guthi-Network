@@ -26,15 +26,17 @@ func wait_loop(elapsed time.Duration) {
 var net_platform nodes.NetworkPlatform
 
 func main() {
-	mem, err := shm.CreateSharedMemory()
+	sem, err := shm.CreateSemaphore()
+	defer sem.RemoveSemaphore()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Semaphore creation error: %s", err)
 	}
-	s := "Hello"
-	mem.WriteSharedMemory([]byte(s))
-	defer mem.RemoveSharedMemory()
-	// var n int
-	mem.WriteSharedMemory([]byte("Hello there again mfers"))
-	mem.ReadSharedMemory()
-	defer mem.RemoveSharedMemory()
+	err = sem.Lock(0)
+	if err != nil {
+		log.Fatalf("Lock error: %s", err)
+	}
+	err = sem.Unlock(0)
+	if err != nil {
+		log.Fatalf("Unlock error: %s", err)
+	}
 }

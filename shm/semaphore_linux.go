@@ -6,10 +6,8 @@ import (
 )
 
 const (
-	IPC_CREAT int = 01000
-	IPC_RMID  int = 0
-	SETVAL    int = 16
-	GETVAL    int = 12
+	key     = 69
+	sem_num = 0
 )
 
 type Semaphore struct {
@@ -42,6 +40,14 @@ func SemGet(key int, nsems int, flags int) (*Semaphore, error) {
 	}
 }
 
+func CreateSemaphore() (*Semaphore, error) {
+	sem, err := SemGet(key, 1, IPC_CREAT|(syscall.S_IRUSR|syscall.S_IWUSR|syscall.S_IRGRP|syscall.S_IWGRP))
+	if err != nil {
+		return nil, err
+	}
+	return sem, nil
+}
+
 func (s *Semaphore) RemoveSemaphore() error {
 	_, _, errno := syscall.Syscall(syscall.SYS_SEMCTL, uintptr(s.semid),
 		uintptr(0), uintptr(IPC_RMID))
@@ -54,15 +60,14 @@ func (s *Semaphore) GetVal(semNum int) (int, error) {
 	return int(val), errnoErr(errno)
 }
 
-func (s *Semaphore) Post(semNum int) error {
+func (s *Semaphore) Unlock(semNum int) error {
 	post := semop{semNum: uint16(semNum), semOp: 1, semFlag: 0x1000}
 	_, _, errno := syscall.Syscall(syscall.SYS_SEMOP, uintptr(s.semid),
 		uintptr(unsafe.Pointer(&post)), uintptr(s.nsems))
 	return errnoErr(errno)
-
 }
 
-func (s *Semaphore) Wait(semNum int) error {
+func (s *Semaphore) Lock(semNum int) error {
 	wait := semop{semNum: uint16(semNum), semOp: -1, semFlag: 0x1000}
 	_, _, errno := syscall.Syscall(syscall.SYS_SEMOP, uintptr(s.semid),
 		uintptr(unsafe.Pointer(&wait)), uintptr(s.nsems))
