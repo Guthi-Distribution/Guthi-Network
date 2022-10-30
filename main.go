@@ -31,11 +31,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Semaphore creation error: %s", err)
 	}
-	err = sem.Lock(0)
+	err = sem.Lock()
 	if err != nil {
 		log.Fatalf("Lock error: %s", err)
 	}
-	err = sem.Unlock(0)
+	fmt.Printf("Locked\n")
+	err = sem.Unlock()
 	if err != nil {
 		log.Fatalf("Unlock error: %s", err)
 	}

@@ -60,15 +60,15 @@ func (s *Semaphore) GetVal(semNum int) (int, error) {
 	return int(val), errnoErr(errno)
 }
 
-func (s *Semaphore) Unlock(semNum int) error {
-	post := semop{semNum: uint16(semNum), semOp: 1, semFlag: 0x1000}
+func (s *Semaphore) Unlock() error {
+	post := semop{semNum: uint16(0), semOp: 1, semFlag: 0x1000}
 	_, _, errno := syscall.Syscall(syscall.SYS_SEMOP, uintptr(s.semid),
 		uintptr(unsafe.Pointer(&post)), uintptr(s.nsems))
 	return errnoErr(errno)
 }
 
-func (s *Semaphore) Lock(semNum int) error {
-	wait := semop{semNum: uint16(semNum), semOp: -1, semFlag: 0x1000}
+func (s *Semaphore) Lock() error {
+	wait := semop{semNum: uint16(0), semOp: -1, semFlag: 0x1000}
 	_, _, errno := syscall.Syscall(syscall.SYS_SEMOP, uintptr(s.semid),
 		uintptr(unsafe.Pointer(&wait)), uintptr(s.nsems))
 	return errnoErr(errno)
