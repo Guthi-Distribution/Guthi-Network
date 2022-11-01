@@ -13,6 +13,18 @@ type NetworkPlatform struct {
 	Connection_caches []CacheEntry
 }
 
+func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatform, error) {
+	platform := &NetworkPlatform{}
+
+	var err error
+	platform.Self_node, err = CreateNetworkNode(name, address, port)
+	if err != nil {
+		return nil, err
+	}
+
+	return platform, nil
+}
+
 func (self *NetworkPlatform) RemoveNode(node NetworkNode) {
 	new_arr := make([]NetworkNode, len(self.Connected_nodes))
 	j := 0

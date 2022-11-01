@@ -1,10 +1,9 @@
 package nodes
 
 import (
+	"GuthiNetwork/events"
 	"net"
 	"time"
-
-	"../events"
 )
 
 // Implement a event queue here

@@ -90,16 +90,21 @@ func ConnectToNetwork(node *NetworkNode, net_platform *NetworkPlatform) bool {
 	return true
 }
 
-func CreateNetworkNode(name string, address string, port int) *NetworkNode {
+func CreateNetworkNode(name string, address string, port int) (*NetworkNode, error) {
 	networkNode := &NetworkNode{}
 	networkNode.Name = name
 
 	//TODO: Implement hashing
 	id := fmt.Sprintf("%s %s %d", name, address, port)
 	table := crc64.MakeTable(100)
-	networkNode.Socket, _ = net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", address, port))
+
+	var err error
+	networkNode.Socket, err = net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", address, port))
+	if err != nil {
+		return nil, err
+	}
 	networkNode.NodeID = crc64.Checksum([]byte(id), table)
-	return networkNode
+	return networkNode, nil
 }
 
 func CommandToBytes(cmd string) []byte {
@@ -184,7 +189,7 @@ func HandleUnknownCommand() {
 func ReplyBack(msg []byte, conn net.Conn, net_platform *NetworkPlatform) {
 	wr, err := conn.Write(msg)
 	if err != nil {
-		fmt.Printf("Failed to reply back to connection", conn)
+		fmt.Println("Failed to reply back to connection", conn)
 	}
 	fmt.Printf("Bytes written back %d.\n", wr)
 }
@@ -223,7 +228,7 @@ func HandleNode(request []byte, net_platform *NetworkPlatform) {
 	net_platform.Connected_nodes = append(net_platform.Connected_nodes, payload.Nodes...)
 }
 
-// TODO :: Should read be handled concurrently via go routines?
+// TODO: Should read be handled concurrently via go routines?
 func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) bool {
 	// request, err := io.ReadAll(conn)
 	request := make([]byte, 2048)
@@ -245,16 +250,8 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) bool {
 	}
 	// first 32 bytes to hold the command
 	// TODO: Format the header data
-
-	l := 0
-	for _, b := range request {
-		if b == 32 || l == len {
-			break
-		}
-		l++
-	}
-	command := BytesToCommand(request[:l])
-	log.Printf("Command: %s %d", command, l)
+	command := BytesToCommand(request[:COMMAND_LENGTH])
+	log.Printf("Command: %s", command)
 
 	switch command {
 	default:
@@ -275,10 +272,10 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) bool {
 		break
 
 	case "echo":
-		ReplyBack(request[l+1:len], conn, net_platform)
+		ReplyBack(request[COMMAND_LENGTH:len], conn, net_platform)
 		break
 	case "getresources":
-		HandleResources(request[l+1:len], conn, net_platform)
+		HandleResources(request[COMMAND_LENGTH:len], conn, net_platform)
 		break
 	}
 	return true
@@ -306,7 +303,8 @@ func ProcessConnections(net_platform *NetworkPlatform) {
 		for i, caches := range net_platform.Connection_caches {
 			result := HandleTCPConnection(caches.connection, net_platform)
 			if !result {
-				// Remove the connection from the cache,bruh bruh. WTF. Khai element remove garney function
+				// Remove the connection from the cache,bruh bruh.
+				// FIXME: Remove the caches
 				temp := net_platform.Connection_caches
 				temp[i] = temp[len(net_platform.Connection_caches)-1]
 				net_platform.Connection_caches = temp[:len(temp)-1]
@@ -315,30 +313,22 @@ func ProcessConnections(net_platform *NetworkPlatform) {
 	}
 }
 
-func AcceptConnection(conn net.Conn, net_platform *NetworkPlatform) {
-	// store the information about the newly connected node into the net_platform struct
-	new_node := CreateNetworkNode("unknown", "127.0.0.1", 8000)
-	net_platform.Connected_nodes = append(net_platform.Connected_nodes, *new_node)
-
-	// Operation on connection caches are omitted for now
-	cache_entry := CreateCacheEntry(conn, nil, new_node.NodeID)
-	net_platform.Connection_caches = append(net_platform.Connection_caches, cache_entry)
-
-	log.Print("Connection accepted", conn)
-}
-
 // For self
 func ListenForTCPConnection(net_platform *NetworkPlatform) {
+	// create a listener that is used to listen to other connection (somethong like that)
+	// Listen announces on the local network address. @docs
 	listener, err := net.Listen("tcp", net_platform.Self_node.Socket.String())
 	if err != nil {
 		log.Fatalf("Listener error: %s\n", err.Error())
 	}
 	defer listener.Close()
 
-	// if net_platform.Self_node.Socket.Port == 6969 {
-	// 	log.Printf("Sending get nodes request")
-	// 	SendGetNode("127.0.0.1:7000", net_platform)
-	// }
+	if net_platform.Self_node.Socket.Port == 7000 {
+		log.Printf("Sending get nodes request")
+
+		// connect to a default node with address 6969
+		SendGetNode("127.0.0.1:6969", net_platform)
+	}
 
 	// The call to listen always blocks
 	// There's no way to get notified when there is a pending connection in Go?
@@ -350,7 +340,7 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 			fmt.Printf("Failed to Accept the incoming connection.  Error: %s\n", err.Error())
 			break
 		}
-		go AcceptConnection(conn, net_platform)
+		go HandleTCPConnection(conn, net_platform)
 	}
 }
 
