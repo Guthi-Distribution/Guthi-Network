@@ -22,7 +22,7 @@ func wait_loop(elapsed time.Duration) {
 }
 
 func main() {
-	port := flag.Int("port", 6969, "Port for the network")
+	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
 	flag.Parse()
 	net_platform, err := nodes.CreateNetworkPlatform("localhost", "localhost", *port)
 	if err != nil {

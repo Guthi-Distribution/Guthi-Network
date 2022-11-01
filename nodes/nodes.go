@@ -44,6 +44,7 @@ type AckMessage struct {
 	AddrFrom string
 }
 
+// if you want nodes to hold additional information, use this
 type NetworkNode struct {
 	NodeID uint64
 	Name   string
@@ -62,7 +63,7 @@ func SyncWithNetwork(net_platform *NetworkPlatform) uint16 {
 	for _, cached := range net_platform.Connection_caches {
 
 		// This should be bidirectional
-		sendData(cached.node_ref, []byte(msg), net_platform)
+		sendDataToNode(cached.node_ref, []byte(msg), net_platform)
 
 		// TODO :: Send and receive msg and interpret it
 		// Wait for it them to recieve message and compare to them
@@ -96,6 +97,8 @@ func CreateNetworkNode(name string, address string, port int) (*NetworkNode, err
 
 	//TODO: Implement hashing
 	id := fmt.Sprintf("%s %s %d", name, address, port)
+
+	// what does this table thing do?
 	table := crc64.MakeTable(100)
 
 	var err error
@@ -107,7 +110,7 @@ func CreateNetworkNode(name string, address string, port int) (*NetworkNode, err
 	return networkNode, nil
 }
 
-func CommandToBytes(cmd string) []byte {
+func CommandStringToBytes(cmd string) []byte {
 	var bytes [COMMAND_LENGTH]byte
 
 	for i, c := range cmd {
@@ -117,7 +120,7 @@ func CommandToBytes(cmd string) []byte {
 	return bytes[:]
 }
 
-func BytesToCommand(bytes []byte) string {
+func BytesToCommandString(bytes []byte) string {
 	var cmd []byte
 
 	for _, b := range bytes {
@@ -129,7 +132,8 @@ func BytesToCommand(bytes []byte) string {
 	return fmt.Sprintf("%s", cmd)
 }
 
-func sendData(node *NetworkNode, data []byte, net_platform *NetworkPlatform) {
+func sendDataToNode(node *NetworkNode, data []byte, net_platform *NetworkPlatform) {
+	// connect to a network
 	conn, err := net.Dial(node.Socket.Network(), node.Socket.String())
 
 	if err != nil {
@@ -150,9 +154,7 @@ func sendDataToAddress(addr string, data []byte, net_platform *NetworkPlatform) 
 
 	if err != nil {
 		log.Printf("Connection Failed, for node with address: %s\n", addr)
-		//TODO: implement remove node for address too
-		// Difficulty: Easy
-		// net_platform.RemoveNode(*node)
+		net_platform.RemoveNodeWithAddress(addr)
 		return
 	}
 	defer conn.Close()
@@ -173,7 +175,14 @@ func SendGetNode(addr string, net_platform *NetworkPlatform) {
 		},
 	}
 	data := GobEncode(payload)
-	data = append(CommandToBytes("getnodes"), data...)
+	data = append(CommandStringToBytes("getnodes"), data...)
+	sendDataToAddress(addr, data, net_platform)
+}
+
+func SendEcho(addr string, net_platform *NetworkPlatform) {
+	payload := "Hello World!"
+	data := GobEncode(payload)
+	data = append(CommandStringToBytes("echo"), data...)
 	sendDataToAddress(addr, data, net_platform)
 }
 
@@ -212,7 +221,7 @@ func HandleGetNodes(request []byte, net_platform *NetworkPlatform) {
 			Nodes:    []NetworkNode{*net_platform.Self_node},
 		}
 
-		sendDataToAddress(payload.AddrFrom, append(CommandToBytes("node"), GobEncode(send_payload)...), net_platform)
+		sendDataToAddress(payload.AddrFrom, append(CommandStringToBytes("node"), GobEncode(send_payload)...), net_platform)
 
 		// if the address is not known for this node, it is fetched
 		if net_platform.knows(payload.AddrFrom) {
@@ -248,9 +257,10 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) bool {
 		log.Printf(err.Error())
 		return false
 	}
+
 	// first 32 bytes to hold the command
 	// TODO: Format the header data
-	command := BytesToCommand(request[:COMMAND_LENGTH])
+	command := BytesToCommandString(request[:COMMAND_LENGTH])
 	log.Printf("Command: %s", command)
 
 	switch command {
