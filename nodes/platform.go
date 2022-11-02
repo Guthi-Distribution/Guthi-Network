@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"net"
 	"sync"
 )
 
@@ -38,6 +39,7 @@ func (self *NetworkPlatform) RemoveNode(node NetworkNode) {
 	self.Connected_nodes = new_arr
 }
 
+// TODO: Implement this for cache entry
 func (self *NetworkPlatform) RemoveNodeWithAddress(addr string) {
 	new_arr := make([]NetworkNode, len(self.Connected_nodes))
 	j := 0
@@ -64,4 +66,14 @@ func (self *NetworkPlatform) knows(addr string) bool {
 		}
 	}
 	return false
+}
+
+func (self *NetworkPlatform) GetNodeConecton(addr string) *net.Conn {
+	for _, node := range self.Connected_nodes {
+		if node.Socket.String() == addr {
+			return node.conn
+		}
+	}
+
+	return nil
 }
