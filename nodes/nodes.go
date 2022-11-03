@@ -1,5 +1,10 @@
 package nodes
 
+/*
+TODO:
+- Check if the node is alive or not
+- Implement checkpointing
+*/
 import (
 	"bytes"
 	"encoding/gob"
@@ -182,7 +187,6 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) bool {
 		return true
 	}
 
-	// defer tcp_connection.Close()
 	if err != nil {
 		// Close the connection
 		if errors.Is(err, net.ErrClosed) {
@@ -242,23 +246,6 @@ func GobEncode(data interface{}) []byte {
 	return buff.Bytes()
 }
 
-func ProcessConnections(net_platform *NetworkPlatform) {
-	// Process other currently running connections
-	for {
-		time.Sleep(100 * time.Millisecond)
-		for i, caches := range net_platform.Connection_caches {
-			result := HandleTCPConnection(*caches.connection, net_platform)
-			if !result {
-				// Remove the connection from the cache,bruh bruh.
-				// FIXME: Remove the caches
-				temp := net_platform.Connection_caches
-				temp[i] = temp[len(net_platform.Connection_caches)-1]
-				net_platform.Connection_caches = temp[:len(temp)-1]
-			}
-		}
-	}
-}
-
 // For self
 func ListenForTCPConnection(net_platform *NetworkPlatform) {
 	// create a listener that is used to listen to other connection (somethong like that)
@@ -271,7 +258,6 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 
 	// The call to listen always blocks
 	// There's no way to get notified when there is a pending connection in Go?
-	go ProcessConnections(net_platform)
 	log.Printf("Localhost is listening ... \n")
 	for {
 		conn, _ := listener.Accept()
