@@ -39,6 +39,12 @@ func (self *NetworkPlatform) RemoveNode(node NetworkNode) {
 	self.Connected_nodes = new_arr
 }
 
+func (self *NetworkPlatform) AddNode(node NetworkNode) {
+	if !self.knows(node.Socket.String()) {
+		self.Connected_nodes = append(self.Connected_nodes, node)
+	}
+}
+
 // TODO: Implement this for cache entry
 func (self *NetworkPlatform) RemoveNodeWithAddress(addr string) {
 	new_arr := make([]NetworkNode, len(self.Connected_nodes))

@@ -1,0 +1,3 @@
+[submodule "Guthi-Core"]
+	path = Guthi-Core
+	url = https://github.com/Guthi-Distribution/Guthi-Core.git

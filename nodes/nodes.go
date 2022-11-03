@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"hash/crc64"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"time"
@@ -108,7 +109,7 @@ func sendDataToAddress(addr string, data []byte, net_platform *NetworkPlatform) 
 }
 
 // send the get node request to a particular node
-func SendGetNode(addr string, net_platform *NetworkPlatform) {
+func SendGetNode(addr string, net_platform *NetworkPlatform) error {
 	payload := GetNodes{
 		AddrFrom: net_platform.Self_node.Socket.String(),
 		Address: []string{
@@ -117,7 +118,7 @@ func SendGetNode(addr string, net_platform *NetworkPlatform) {
 	}
 	data := GobEncode(payload)
 	data = append(CommandStringToBytes("getnodes"), data...)
-	sendDataToAddress(addr, data, net_platform)
+	return sendDataToAddress(addr, data, net_platform)
 }
 
 func SendEcho(addr string, net_platform *NetworkPlatform) {
@@ -178,23 +179,18 @@ func HandleNode(request []byte, net_platform *NetworkPlatform) {
 }
 
 // TODO: Should read be handled concurrently via go routines?
-func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) bool {
+func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 	// request, err := io.ReadAll(conn)
-	request := make([]byte, 2048)
+	request, err := ioutil.ReadAll(conn)
 	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-	len, err := io.ReadAtLeast(conn, request, COMMAND_LENGTH)
-	if len == 0 {
-		return true
-	}
 
 	if err != nil {
 		// Close the connection
 		if errors.Is(err, net.ErrClosed) {
 			log.Printf("Connection closed by the peer")
-			return false
+			return err
 		}
-		log.Printf(err.Error())
-		return false
+		return err
 	}
 
 	// first 32 bytes to hold the command
@@ -217,18 +213,22 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) bool {
 		break
 
 	case "echo":
-		ReplyBack(request[COMMAND_LENGTH:len], conn, net_platform)
+		ReplyBack(request[COMMAND_LENGTH:], conn, net_platform)
 		break
 
 	case "connect":
-		HandleConnectionInitiation(request[COMMAND_LENGTH:len], net_platform)
+		HandleConnectionInitiation(request[COMMAND_LENGTH:], net_platform)
+		break
+
+	case "connection_reply":
+		HandleConnectionReply(request[COMMAND_LENGTH:], net_platform)
 		break
 
 	case "getresources":
-		HandleResources(request[COMMAND_LENGTH:len], conn, net_platform)
+		HandleResources(request[COMMAND_LENGTH:], conn, net_platform)
 		break
 	}
-	return true
+	return nil
 }
 
 // Gob Encode
