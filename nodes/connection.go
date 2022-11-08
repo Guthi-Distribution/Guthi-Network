@@ -11,7 +11,7 @@ import (
 )
 
 // TODO: Connection timeout feature added
-var pending_connection map[string]uint64
+var pending_connection = make(map[string]uint64)
 
 func intiateTCPConnection(node *NetworkNode) (*net.Conn, error) {
 	tcp_con, err := net.Dial("tcp", node.Socket.String())
@@ -72,7 +72,6 @@ func HandleConnectionInitiation(request []byte, net_platform *NetworkPlatform) e
 	if err != nil {
 		return err
 	}
-	err = SendGetNode(payload.AddrFrom, net_platform) // request complete node information from the sender
 	if err != nil {
 		return err
 	}
@@ -85,8 +84,8 @@ func HandleConnectionReply(request []byte, net_platform *NetworkPlatform) error 
 	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
 	net_platform.AddNode(payload.Node)
 
-	if payload.IsReply {
-		// hen a reply is recieved, reply with the self node information
+	if !payload.IsReply {
+		// then a reply is recieved, reply with the self node information
 		send_payload := ConnectionReply{
 			AddrFrom:  net_platform.GetNodeAddress(),
 			Node:      *net_platform.Self_node,
