@@ -44,13 +44,6 @@ type AckMessage struct {
 	AddrFrom string
 }
 
-type NetworkNode struct {
-	NodeID uint64
-	Name   string
-	// TCP Addr is akin to socket. So, its only used when its listening for connection, right?
-	Socket *net.TCPAddr
-}
-
 // Onto nodes discovery
 // How to decide if networks are in sync? ans -> After certain time lol
 // Should this function be called on regular basis? On certain interval or not?

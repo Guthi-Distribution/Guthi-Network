@@ -2,12 +2,18 @@ package nodes
 
 import (
 	"fmt"
-	"sync"
+	"net"
 )
+
+type NetworkNode struct {
+	NodeID uint64 `json:"id"`
+	Name   string `json:"name"`
+	// TCP Addr is akin to socket. So, its only used when its listening for connection, right?
+	Socket *net.TCPAddr `json:"address"`
+}
 
 type NetworkPlatform struct {
 	// Well, there's just a single writer but multiple readers. So RWMutex sounds better choice
-	Lock              sync.Mutex
 	Self_node         *NetworkNode
 	Connected_nodes   []NetworkNode
 	Connection_caches []CacheEntry

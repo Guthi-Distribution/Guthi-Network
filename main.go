@@ -3,10 +3,9 @@ package main
 // There should be one univeral listening port
 
 import (
+	"GuthiNetwork/api"
 	"GuthiNetwork/nodes"
-	"GuthiNetwork/shm"
 	"fmt"
-	"log"
 	"time"
 )
 
@@ -26,18 +25,6 @@ func wait_loop(elapsed time.Duration) {
 var net_platform nodes.NetworkPlatform
 
 func main() {
-	sem, err := shm.CreateSemaphore()
-	defer sem.RemoveSemaphore()
-	if err != nil {
-		log.Fatalf("Semaphore creation error: %s", err)
-	}
-	err = sem.Lock()
-	if err != nil {
-		log.Fatalf("Lock error: %s", err)
-	}
-	fmt.Printf("Locked\n")
-	err = sem.Unlock()
-	if err != nil {
-		log.Fatalf("Unlock error: %s", err)
-	}
+	net_platform.Self_node = nodes.CreateNetworkNode("localhost", "127.0.0.1", 8000)
+	api.InitlializeServer(&net_platform)
 }
