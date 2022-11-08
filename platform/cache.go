@@ -1,4 +1,4 @@
-package nodes
+package platform
 
 import (
 	"GuthiNetwork/events"

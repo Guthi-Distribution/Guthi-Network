@@ -1,7 +1,7 @@
 package api
 
 import (
-	"GuthiNetwork/nodes"
+	"GuthiNetwork/platform"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,7 +25,7 @@ func CORSMiddleware() gin.HandlerFunc {
 
 const PORT = ":8080"
 
-func InitlializeServer(network_platform *nodes.NetworkPlatform) {
+func StartServer(network_platform *platform.NetworkPlatform) {
 	router := gin.Default()
 	router.Use(CORSMiddleware())
 
