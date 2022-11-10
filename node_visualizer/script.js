@@ -8,7 +8,8 @@ fetchPromise
         return response.json();
     })
     .then(json => {
-        document.getElementById("attr1").innerHTML = json.attr1
-        document.getElementById("attr2").innerHTML = json.attr2
-        document.getElementById("attr3").innerHTML = json.attr3
+        document.getElementById("id").innerHTML = json.id
+        document.getElementById("IP").innerHTML = json.address.IP
+        document.getElementById("port").innerHTML = json.address.Port
+        document.getElementById("zone").innerHTML = json.address.Zone
     });
