@@ -2,7 +2,6 @@ package platform
 
 import (
 	"GuthiNetwork/events"
-	"net"
 	"time"
 )
 
@@ -21,7 +20,7 @@ type CacheEntry struct {
 	time        time.Time // timestamp for when the cache was written
 }
 
-func CreateCacheEntry(connection *net.Conn, node_ref *NetworkNode, node_ref_id uint64) CacheEntry {
+func CreateCacheEntry(node_ref *NetworkNode, node_ref_id uint64) CacheEntry {
 	cache_entry := CacheEntry{
 		node_ref,
 		node_ref_id,

@@ -4,6 +4,9 @@ import (
 	"net"
 )
 
+/*
+Network Node, and platform struct and methods
+*/
 type NetworkNode struct {
 	NodeID uint64 `json:"id"`
 	Name   string `json:"name"`
@@ -14,7 +17,8 @@ type NetworkNode struct {
 type NetworkPlatform struct {
 	// Well, there's just a single writer but multiple readers. So RWMutex sounds better choice
 	Self_node         *NetworkNode
-	Connected_nodes   []NetworkNode
+	Connected_nodes   []NetworkNode // nodes that are connected right noe
+	Available_nodes   []NetworkNode // nodes information that are available to connect
 	Connection_caches []CacheEntry
 }
 

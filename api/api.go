@@ -32,7 +32,7 @@ func StartServer(network_platform *platform.NetworkPlatform) {
 	// nodes information
 	router.GET("/nodes", GetAvailableNodes(network_platform))
 	router.GET("/self", GetSelfNode(network_platform))
-	router.POST("connect", PostConnectNode(network_platform))
+	router.POST("/connect", PostConnectNode(network_platform))
 
 	router.Run(PORT)
 }
