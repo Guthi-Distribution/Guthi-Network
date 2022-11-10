@@ -29,8 +29,10 @@ func StartServer(network_platform *platform.NetworkPlatform) {
 	router := gin.Default()
 	router.Use(CORSMiddleware())
 
-	// nodes
+	// nodes information
 	router.GET("/nodes", GetAvailableNodes(network_platform))
 	router.GET("/self", GetSelfNode(network_platform))
+	router.POST("connect", PostConnectNode(network_platform))
+
 	router.Run(PORT)
 }
