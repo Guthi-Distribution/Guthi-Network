@@ -1,6 +1,7 @@
 package api
 
 import (
+	"GuthiNetwork/core"
 	"GuthiNetwork/platform"
 
 	"github.com/gin-gonic/gin"
@@ -30,6 +31,21 @@ func PostConnectNode(network_platform *platform.NetworkPlatform) gin.HandlerFunc
 		}
 
 		network_platform.ConnectToNode(address)
+	}
+
+	return fn
+}
+
+/*
+Memory Information
+*/
+func GetMemoryInfo(network_platform *platform.NetworkPlatform) gin.HandlerFunc {
+	fn := func(c *gin.Context) {
+		memory_info := make(map[string]core.MemoryStatus)
+		for _, cache := range network_platform.Connection_caches {
+			memory_info[cache.Node_ref.Name] = cache.Memory_info
+		}
+		c.JSON(200, memory_info)
 	}
 
 	return fn

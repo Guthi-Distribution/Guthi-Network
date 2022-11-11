@@ -32,7 +32,7 @@ func SyncWithNetwork(net_platform *NetworkPlatform) uint16 {
 	for _, cached := range net_platform.Connection_caches {
 
 		// This should be bidirectional
-		sendDataToNode(cached.node_ref, []byte(msg), net_platform)
+		sendDataToNode(cached.Node_ref, []byte(msg), net_platform)
 
 		// TODO :: Send and receive msg and interpret it
 		// Wait for it them to recieve message and compare to them
@@ -92,12 +92,6 @@ func ReplyBack(msg []byte, conn net.Conn, net_platform *NetworkPlatform) {
 		fmt.Println("Failed to reply back to connection", conn)
 	}
 	fmt.Printf("Bytes written back %d.\n", wr)
-}
-
-func HandleResources(msg []byte, conn net.Conn, net_platform *NetworkPlatform) {
-	// Files are handled by the C++ runtime
-	//  Interface with C++
-	log.Println("Resource requested ", msg)
 }
 
 /*
@@ -192,9 +186,22 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 		HandleConnectionReply(request[COMMAND_LENGTH:], net_platform)
 		break
 
-	case "getresources":
-		HandleResources(request[COMMAND_LENGTH:], conn, net_platform)
+	case "get_mem_info":
+		HandleGetMemoryInformation(request[COMMAND_LENGTH:], net_platform)
 		break
+
+	case "get_cpu_info":
+		HandleGetCpuInformation(request[COMMAND_LENGTH:], net_platform)
+		break
+
+	case "cpuinfo":
+		HandleReceiveCpuInformation(request[COMMAND_LENGTH:], net_platform)
+		break
+
+	case "meminfo":
+		HandleReceiveMemoryInformation(request[COMMAND_LENGTH:], net_platform)
+		break
+
 	}
 	return nil
 }
@@ -227,6 +234,7 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 	// The call to listen always blocks
 	// There's no way to get notified when there is a pending connection in Go?
 	log.Printf("Localhost is listening ... \n")
+	go RequestInfomation(net_platform)
 	for {
 		conn, _ := listener.Accept()
 		if err != nil {

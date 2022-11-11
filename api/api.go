@@ -34,5 +34,8 @@ func StartServer(network_platform *platform.NetworkPlatform) {
 	router.GET("/self", GetSelfNode(network_platform))
 	router.POST("/connect", PostConnectNode(network_platform))
 
+	// memory info
+	router.GET("/memory", GetMemoryInfo(network_platform))
+
 	router.Run(PORT)
 }

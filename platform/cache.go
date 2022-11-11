@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"GuthiNetwork/core"
 	"GuthiNetwork/events"
 	"time"
 )
@@ -15,9 +16,11 @@ type Queue struct {
 // single cache entry
 type CacheEntry struct {
 	// the network nodes are stored in array statically, so using ID as ref
-	node_ref    *NetworkNode
+	Node_ref    *NetworkNode
 	node_ref_id uint64
 	time        time.Time // timestamp for when the cache was written
+	Cpu_info    core.ProcessorStatus
+	Memory_info core.MemoryStatus
 }
 
 func CreateCacheEntry(node_ref *NetworkNode, node_ref_id uint64) CacheEntry {
@@ -25,12 +28,14 @@ func CreateCacheEntry(node_ref *NetworkNode, node_ref_id uint64) CacheEntry {
 		node_ref,
 		node_ref_id,
 		time.Now(), // might need to consider a distrubted time system
+		core.ProcessorStatus{},
+		core.MemoryStatus{},
 	}
 	return cache_entry
 }
 
 func (cache_entry *CacheEntry) GetNodeRef() *NetworkNode {
-	return cache_entry.node_ref
+	return cache_entry.Node_ref
 }
 
 type NodeConnectionCache struct {

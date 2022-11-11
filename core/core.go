@@ -19,14 +19,14 @@ func Initialize() interface{} {
 
 // ------------------CPU----------------------
 type ProcessorInfo struct {
-	processor_number uint32
-	current_mhz      uint32
-	total_mhz        uint32
+	Processor_number uint32
+	Current_mhz      uint32
+	Total_mhz        uint32
 }
 
 type ProcessorStatus struct {
-	processor_count uint32
-	processors      []ProcessorInfo
+	Processor_count uint32
+	Processors      []ProcessorInfo
 }
 
 func GetProcessorInfo() ProcessorStatus {
@@ -35,13 +35,13 @@ func GetProcessorInfo() ProcessorStatus {
 		uint32(info.processor_count),
 		[]ProcessorInfo{},
 	}
-	for i := 0; i < int(status.processor_count); i++ {
+	for i := 0; i < int(status.Processor_count); i++ {
 		info := ProcessorInfo{
 			uint32(info.processors[i].processor_number),
 			uint32(info.processors[i].current_mhz),
 			uint32(info.processors[i].total_mhz),
 		}
-		status.processors = append(status.processors, info)
+		status.Processors = append(status.Processors, info)
 	}
 
 	return status
@@ -57,9 +57,9 @@ func GetCPUAllUsage() float64 {
 
 // ------------------Memory--------------
 type MemoryStatus struct {
-	installed_physical_ram uint64
-	available_ram          uint64
-	memory_load            uint64
+	Installed_physical_ram uint64 `json:"installed"`
+	Available_ram          uint64 `json:"Available"`
+	Memory_load            uint64 `json:"Memory_Load"`
 	// Information about virtual memory is not required here
 }
 
