@@ -1,9 +1,10 @@
 
-const fetchPromise = fetch('http://localhost:8080/');
+const fetchPromise = fetch('http://localhost:8080/nodes');
 
 fetchPromise
     .then(response => {
         if (!response.ok) {
+            console.log(`HTTP error: ${response.status}`);
             throw new Error(`HTTP error: ${response.status}`);
         }
         return response.json();
@@ -15,10 +16,11 @@ fetchPromise
             row.setAttribute("id", e.id);
             // row.setAttribute("class", "tableRow");
             row.innerHTML = `
-                <td>${e.id}</td>
-                <td>${e.address.IP}</td>
-                <td>${e.address.Port}</td>
-                <td>${e.address.Zone}</td>
+                <td>${e.id || undefined}</td>
+                <td>${e.name || undefined}</td>
+                <td>${e.address.IP || undefined}</td>
+                <td>${e.address.Port || undefined}</td>
+                <td>${e.address.Zone || undefined}</td>
             `;
             table.append(row);
         });

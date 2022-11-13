@@ -29,38 +29,6 @@ header nav a:hover {
     color:  #333333;
 }
 
-.banner {
-    background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(https://images.unsplash.com/photo-1468186402854-9a641fd7a7c4?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=869&q=80);
-    color: #fff;
-    padding: 30px;
-    text-align: center;
-}
-
-.banner h1 {
-    font-size: 40px;
-}
-
-/* vertical list */
-.list {
-    display: flex;
-    flex-direction: column;
-    align-items: left;
-}
-
-.list li {
-    list-style: none;
-    margin: 10px 0;
-}
-
-.list li a {
-    color: #333;
-    text-decoration: none;
-}
-
-.list li a:hover {
-    color: #000;
-}
-
 .table {
     width: 100%;
     border-collapse: collapse;
