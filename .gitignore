@@ -15,3 +15,4 @@
 # vendor/
 GuthiNetwork
 .vscode/
+__debug_bin
