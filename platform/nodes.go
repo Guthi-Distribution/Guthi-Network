@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"hash/crc64"
-	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -33,7 +32,7 @@ func SyncWithNetwork(net_platform *NetworkPlatform) uint16 {
 	for _, cached := range net_platform.Connection_caches {
 
 		// This should be bidirectional
-		sendDataToNode(cached.node_ref, []byte(msg), net_platform)
+		sendDataToNode(cached.Node_ref, []byte(msg), net_platform)
 
 		// TODO :: Send and receive msg and interpret it
 		// Wait for it them to recieve message and compare to them
@@ -61,42 +60,6 @@ func CreateNetworkNode(name string, address string, port int) (*NetworkNode, err
 	}
 	networkNode.NodeID = crc64.Checksum([]byte(id), table)
 	return networkNode, nil
-}
-
-func sendDataToNode(node *NetworkNode, data []byte, net_platform *NetworkPlatform) {
-	// connect to a network
-	conn, err := net.Dial(node.Socket.Network(), node.Socket.String())
-
-	if err != nil {
-		log.Printf("Connection Failed, for node %s\n", node.Name)
-		net_platform.RemoveNode(*node)
-		return
-	}
-	defer conn.Close()
-
-	_, err = io.Copy(conn, bytes.NewReader(data))
-	if err != nil {
-		log.Printf("Sending data failed, error: %s\n", err.Error())
-	}
-}
-
-func sendDataToAddress(addr string, data []byte, net_platform *NetworkPlatform) error {
-	conn, err := net.Dial("tcp", addr)
-
-	if err != nil {
-		log.Printf("Connection Failed, for node with address: %s\n", addr)
-		net_platform.RemoveNodeWithAddress(addr)
-		return err
-	}
-	defer conn.Close()
-
-	_, err = io.Copy(conn, bytes.NewReader(data)) // write into connection i.e send data
-
-	if err != nil {
-		return err
-	}
-
-	return err
 }
 
 // send the get node request to a particular node
@@ -131,13 +94,12 @@ func ReplyBack(msg []byte, conn net.Conn, net_platform *NetworkPlatform) {
 	fmt.Printf("Bytes written back %d.\n", wr)
 }
 
-func HandleResources(msg []byte, conn net.Conn, net_platform *NetworkPlatform) {
-	// Files are handled by the C++ runtime
-	//  Interface with C++
-	log.Println("Resource requested ", msg)
-}
-
-func HandleGetNodes(request []byte, net_platform *NetworkPlatform) {
+/*
+Handle Get node request from the node
+@param request: request byte
+@net_platform: pointer to network platform
+*/
+func HandleGetNodes(request []byte, net_platform *NetworkPlatform) error {
 	var payload GetNodes
 	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
 
@@ -149,11 +111,18 @@ func HandleGetNodes(request []byte, net_platform *NetworkPlatform) {
 			Nodes:    []NetworkNode{*net_platform.Self_node},
 		}
 
-		sendDataToAddress(payload.AddrFrom, append(CommandStringToBytes("node"), GobEncode(send_payload)...), net_platform)
+		return sendDataToAddress(payload.AddrFrom, append(CommandStringToBytes("node"), GobEncode(send_payload)...), net_platform)
 	}
+
+	return nil
 }
 
-func HandleNode(request []byte, net_platform *NetworkPlatform) {
+/*
+Handles when nodes information is received
+- Adds the nodes to connected nodes
+-
+*/
+func HandleNodeResponse(request []byte, net_platform *NetworkPlatform) {
 	var payload NodesMessage
 	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
 	fmt.Printf("Address received from %s\n", payload.AddrFrom)
@@ -163,13 +132,15 @@ func HandleNode(request []byte, net_platform *NetworkPlatform) {
 		log.Printf("Nodes received length is zero")
 		return
 	}
-	entry := CreateCacheEntry(nil, &payload.Nodes[0], payload.Nodes[0].NodeID)
+	entry := CreateCacheEntry(&payload.Nodes[0], payload.Nodes[0].NodeID)
 	net_platform.Connection_caches = append(net_platform.Connection_caches, entry)
 
 	SyncWithNetwork(net_platform)
 }
 
-// TODO: Should read be handled concurrently via go routines?
+/*
+Wrapper function for all the handling of various request and response
+*/
 func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 	// request, err := io.ReadAll(conn)
 	request, err := ioutil.ReadAll(conn)
@@ -200,7 +171,7 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 
 	// for receiving a node
 	case "node":
-		HandleNode(request[COMMAND_LENGTH:], net_platform)
+		HandleNodeResponse(request[COMMAND_LENGTH:], net_platform)
 		break
 
 	case "echo":
@@ -215,9 +186,22 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 		HandleConnectionReply(request[COMMAND_LENGTH:], net_platform)
 		break
 
-	case "getresources":
-		HandleResources(request[COMMAND_LENGTH:], conn, net_platform)
+	case "get_mem_info":
+		HandleGetMemoryInformation(request[COMMAND_LENGTH:], net_platform)
 		break
+
+	case "get_cpu_info":
+		HandleGetCpuInformation(request[COMMAND_LENGTH:], net_platform)
+		break
+
+	case "cpuinfo":
+		HandleReceiveCpuInformation(request[COMMAND_LENGTH:], net_platform)
+		break
+
+	case "meminfo":
+		HandleReceiveMemoryInformation(request[COMMAND_LENGTH:], net_platform)
+		break
+
 	}
 	return nil
 }
@@ -250,6 +234,7 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 	// The call to listen always blocks
 	// There's no way to get notified when there is a pending connection in Go?
 	log.Printf("Localhost is listening ... \n")
+	go RequestInfomation(net_platform)
 	for {
 		conn, _ := listener.Accept()
 		if err != nil {
@@ -259,5 +244,3 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 		go HandleTCPConnection(conn, net_platform)
 	}
 }
-
-// To be implemented later on

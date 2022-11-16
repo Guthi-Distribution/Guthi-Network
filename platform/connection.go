@@ -13,6 +13,9 @@ import (
 // TODO: Connection timeout feature added
 var pending_connection = make(map[string]uint64)
 
+/*
+Initiate TCP Connection, creates connection and returns the connection
+*/
 func intiateTCPConnection(node *NetworkNode) (*net.Conn, error) {
 	tcp_con, err := net.Dial("tcp", node.Socket.String())
 	if err != nil {
@@ -22,6 +25,12 @@ func intiateTCPConnection(node *NetworkNode) (*net.Conn, error) {
 	return &tcp_con, err
 }
 
+/*
+Connect to the node, to a specific address
+Returns:
+
+	error if any has occured
+*/
 func (net_platform *NetworkPlatform) ConnectToNode(address string) error {
 	rand_num, err := rand.Prime(rand.Reader, 64)
 	payload := ConnectionRequest{
@@ -41,23 +50,31 @@ func (net_platform *NetworkPlatform) ConnectToNode(address string) error {
 	return nil
 }
 
-// For connecting to the network, at least one node need to be known
+/*
+Connect to the node, to a specific node
+Returns:
+
+	error if any has occured
+*/
 func ConnectToNetwork(node *NetworkNode, net_platform *NetworkPlatform) error {
 	// Connect as a client to the network
 	// Maybe implement something like OSPF routing algorithm to create map of the network ??
-	tcp_connection, err := intiateTCPConnection(node)
+	_, err := intiateTCPConnection(node)
 	if err != nil {
 		log.Printf("Connection setup error: %s", err)
 		return err
 	}
 
 	// TODO :: Perform other necessary actions to get in sync with the network
-	entry := CreateCacheEntry(tcp_connection, node, node.NodeID)
+	entry := CreateCacheEntry(node, node.NodeID)
 	net_platform.Connection_caches = append(net_platform.Connection_caches, entry)
 	SyncWithNetwork(net_platform)
 	return nil
 }
 
+/*
+Respond to connect request from the node
+*/
 func HandleConnectionInitiation(request []byte, net_platform *NetworkPlatform) error {
 	var payload ConnectionRequest
 	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)

@@ -1,0 +1,96 @@
+html {
+    height: 100%;
+}
+
+body {
+    font-family: 'Roboto Condensed', sans-serif;
+    color: #333333;
+    max-width: 650px;
+    margin: 0 auto;
+    padding: 0 16px;
+
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+header {
+    margin-top: 16px;
+    margin-bottom: 48px;
+}
+
+header nav a {
+    color: #888888;
+    margin-right: 16px;
+    text-decoration: none;
+}
+
+header nav a:hover {
+    color:  #333333;
+}
+
+.container {
+    width: 100%;
+    /* overflow-x: scroll */
+}
+
+.table {
+    width: 100%;
+    margin-top: 20px;
+}
+
+
+.table td,
+.table th {
+    text-align: left;
+    padding: 15px;
+    font-size: 13px !important;
+    font-weight: 700;
+    border-bottom: 1.5px solid #e5e5e5
+}
+
+.table td {
+    font-weight: 400
+}
+
+.table td a {
+    color: #5e84f7;
+    text-decoration: none
+}
+
+.table td a:hover {
+    text-decoration: underline
+}
+
+.table td span {
+    color: #939393
+}
+
+.table td .hashLoader {
+    width: 250px
+}
+
+.table .tableRows:hover {
+    background: #f1f1f1;
+    transition: all .3s ease-out
+}
+
+.table .hidden {
+    display: none
+}
+
+.table .expandFlex {
+    display: flex;
+    margin-bottom: 50px;
+}
+
+.table .expandFlex .fromHolder,
+.table .expandFlex .toHolder {
+    width: 48%;
+    padding: 10px;
+}
+
+.table .expandFlex .arrow {
+    text-align: center;
+    padding-top: 8px
+}

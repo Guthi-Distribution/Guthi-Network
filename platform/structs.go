@@ -43,3 +43,12 @@ type AckMessage struct {
 	AddrFrom string
 	Id       uint64
 }
+<<<<<<< HEAD
+=======
+
+// a generic struct to request a information
+// this struct can be used, so no parameter needs to be provided to the request
+type GetInformation struct {
+	AddrFrom string
+}
+>>>>>>> 0cf505d4204d0d194260e05680d17e2279eed100
