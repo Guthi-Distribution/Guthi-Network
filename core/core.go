@@ -2,7 +2,7 @@ package core
 
 /*
 #cgo CXXFLAGS: "-std=c++20 -I../Guthi-Core/src/"
-#cgo LDFLAGS: -L../Guthi-Core/ -lGuthiCore -lstdc++
+#cgo LDFLAGS: -L../Guthi-Core/lib -lGuthiCore -lstdc++
 #include "../Guthi-Core/src/core/c_api.h"
 */
 import "C"
