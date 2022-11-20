@@ -9,9 +9,6 @@ func (memory *SharedMemory) WriteSharedMemory(data []byte) {
 	length := uint16(len(data))
 	memory.shm_segment.count = uint16(len(data))
 
-	// TODO: Fix encoding
-	// currently only memory alignment is used
-	// the good old C way
 	length_buff := []byte{
 		byte(length & 0xff), byte((length >> 8) & 0xff),
 	}

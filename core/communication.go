@@ -1,6 +1,9 @@
 package core
 
-import "GuthiNetwork/shm"
+import (
+	"GuthiNetwork/shm"
+	"fmt"
+)
 
 /*
 Shared memory format:
@@ -20,3 +23,13 @@ const (
 
 var semaphore *shm.Semaphore
 var shared_memory *shm.SharedMemory
+
+func ReadSharedMemory() {
+	data := shared_memory.ReadSharedMemory()
+	// 0x30 is the acii value of
+	if data[0] == 0x30 {
+		data = data[1:]
+		filesystem.Fs = string(data[:])
+		fmt.Println(filesystem.Fs)
+	}
+}

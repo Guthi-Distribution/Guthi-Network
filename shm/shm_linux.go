@@ -20,7 +20,7 @@ func CreateSharedMemory() (*SharedMemory, error) {
 	shm_memory.desc = &unix.SysvShmDesc{}
 
 	shm_memory.key = 69
-	id, err := unix.SysvShmGet(shm_memory.key, 4100, unix.IPC_CREAT|(syscall.S_IRUSR|syscall.S_IWUSR|syscall.S_IRGRP|syscall.S_IWGRP))
+	id, err := unix.SysvShmGet(shm_memory.key, 4098, unix.IPC_CREAT|(syscall.S_IRUSR|syscall.S_IWUSR|syscall.S_IRGRP|syscall.S_IWGRP))
 	shm_memory.Id = id
 	if err != nil {
 		fmt.Printf("Memory creation error: %s\n", err)
