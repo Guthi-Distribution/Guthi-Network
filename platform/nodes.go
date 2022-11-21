@@ -202,6 +202,14 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 		HandleReceiveMemoryInformation(request[COMMAND_LENGTH:], net_platform)
 		break
 
+	case "get_fs":
+		HandleGetFileSystem(request[COMMAND_LENGTH:], net_platform)
+		break
+
+	case "filesystem":
+		HandleReceiveFileSystem(request[COMMAND_LENGTH:], net_platform)
+		break
+
 	}
 	return nil
 }

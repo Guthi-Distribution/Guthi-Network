@@ -10,7 +10,7 @@ func (memory *SharedMemory) WriteSharedMemory(data []byte) {
 	memory.shm_segment.count = uint16(len(data))
 
 	length_buff := []byte{
-		byte(length & 0xff), byte((length >> 8) & 0xff),
+		byte(length & 0xff), byte((length >> 8) & 0xff), '1',
 	}
 	data = append(length_buff, data...)
 	copy(memory.shm_segment.buff, data)
