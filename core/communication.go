@@ -12,10 +12,11 @@ Shared memory format:
   - For later data we need format for each message type
 */
 const (
-	RUNTIME_TIME = 1 // FOR GO process id
+	RUNTIME_TYPE = 1 // FOR GO process id
 
 	// Message Type
-	MESSAGE_EVENT = 0
+	MESSAGE_EVENT       = 0
+	MESSSAGE_FILESYSTEM = 1
 
 	// EVENT TYPES
 	FILE_CHANGED_EVENT = 0

@@ -22,10 +22,10 @@ func (node *NetworkNode) GetAddressString() string {
 
 type NetworkPlatform struct {
 	// Well, there's just a single writer but multiple readers. So RWMutex sounds better choice
-	Self_node         *NetworkNode
-	Connected_nodes   []NetworkNode // nodes that are connected right noe
-	Available_nodes   []NetworkNode // nodes information that are available to connect
-	Connection_caches []CacheEntry
+	Self_node          *NetworkNode  `json:"self_node"`
+	Connected_nodes    []NetworkNode `json:"connected_nodes"` // nodes that are connected right noe
+	Connection_History []string      `json:"history"`         // nodes information that are prevoisly connected
+	Connection_caches  []CacheEntry  `json:"cache_entry"`
 }
 
 func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatform, error) {
@@ -52,6 +52,15 @@ func (self *NetworkPlatform) RemoveNode(node NetworkNode) {
 	}
 
 	self.Connected_nodes = new_arr
+}
+
+func (self *NetworkPlatform) AddToPreviousNodes(addr string) {
+	for _, node := range self.Connection_History {
+		if node == addr {
+			return
+		}
+	}
+	self.Connection_History = append(self.Connection_History, addr)
 }
 
 func (self *NetworkPlatform) AddNode(node NetworkNode) {

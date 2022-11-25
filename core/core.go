@@ -49,7 +49,7 @@ func GetFileSystem() FilesystemCore {
 
 func SetFileSystem(fs FilesystemCore) {
 	filesystem = fs
-	shared_memory.WriteSharedMemory([]byte(filesystem.Fs))
+	shared_memory.WriteSharedMemory([]byte(filesystem.Fs), MESSSAGE_FILESYSTEM)
 }
 
 // Runtime info structure
