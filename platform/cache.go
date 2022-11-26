@@ -16,7 +16,7 @@ type Queue struct {
 // single cache entry
 type CacheEntry struct {
 	// the network nodes are stored in array statically, so using ID as ref
-	Node_ref    *NetworkNode
+	Node_ref    *NetworkNode `json:"self_node"`
 	node_ref_id uint64
 	time        time.Time // timestamp for when the cache was written
 	Cpu_info    core.ProcessorStatus
