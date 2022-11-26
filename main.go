@@ -25,7 +25,7 @@ func wait_loop(elapsed time.Duration) {
 
 func main() {
 	core.Initialize()
-
+	go core.ReadSharedMemory()
 	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
 	flag.Parse()
 	net_platform, err := platform.CreateNetworkPlatform("localhost", "localhost", *port)

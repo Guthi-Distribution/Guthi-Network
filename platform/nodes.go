@@ -202,6 +202,14 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 		HandleReceiveMemoryInformation(request[COMMAND_LENGTH:], net_platform)
 		break
 
+	case "get_fs":
+		HandleGetFileSystem(request[COMMAND_LENGTH:], net_platform)
+		break
+
+	case "filesystem":
+		HandleReceiveFileSystem(request[COMMAND_LENGTH:], net_platform)
+		break
+
 	}
 	return nil
 }
@@ -235,6 +243,7 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 	// There's no way to get notified when there is a pending connection in Go?
 	log.Printf("Localhost is listening ... \n")
 	go RequestInfomation(net_platform)
+	go CommunicateFileSystem(net_platform)
 	for {
 		conn, _ := listener.Accept()
 		if err != nil {

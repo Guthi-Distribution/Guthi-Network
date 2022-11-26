@@ -1,6 +1,9 @@
 package core
 
-import "GuthiNetwork/shm"
+import (
+	"GuthiNetwork/shm"
+	"fmt"
+)
 
 /*
 Shared memory format:
@@ -9,10 +12,11 @@ Shared memory format:
   - For later data we need format for each message type
 */
 const (
-	RUNTIME_TIME = 0 // FOR GO
+	RUNTIME_TYPE = 1 // FOR GO process id
 
 	// Message Type
-	MESSAGE_EVENT = 0
+	MESSAGE_EVENT       = 0
+	MESSSAGE_FILESYSTEM = 1
 
 	// EVENT TYPES
 	FILE_CHANGED_EVENT = 0
@@ -20,3 +24,13 @@ const (
 
 var semaphore *shm.Semaphore
 var shared_memory *shm.SharedMemory
+
+func ReadSharedMemory() {
+	data := shared_memory.ReadSharedMemory()
+	// 0x30 is the acii value of
+	if data[0] == 0x30 {
+		data = data[1:]
+		filesystem.Fs = string(data[:])
+		fmt.Println(filesystem.Fs)
+	}
+}

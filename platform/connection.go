@@ -10,8 +10,9 @@ import (
 	"time"
 )
 
-// TODO: Connection timeout feature added
-var pending_connection = make(map[string]uint64)
+// TODO: Connection timeout feature complete??
+var pending_connection_id = make(map[string]uint64)
+var pending_connection_time = make(map[string]uint64)
 
 /*
 Initiate TCP Connection, creates connection and returns the connection
@@ -37,7 +38,7 @@ func (net_platform *NetworkPlatform) ConnectToNode(address string) error {
 		AddrFrom:  net_platform.Self_node.Socket.String(),
 		ConnectId: rand_num.Uint64(),
 	}
-	pending_connection[address] = uint64(time.Now().Unix())
+	pending_connection_id[address] = uint64(time.Now().Unix())
 	// connect to the network
 	data := GobEncode(payload)
 	data = append(CommandStringToBytes("connect"), data...)
@@ -73,7 +74,7 @@ func ConnectToNetwork(node *NetworkNode, net_platform *NetworkPlatform) error {
 }
 
 /*
-Respond to connect request from the node
+Respond to connect request from a node
 */
 func HandleConnectionInitiation(request []byte, net_platform *NetworkPlatform) error {
 	var payload ConnectionRequest
@@ -96,6 +97,10 @@ func HandleConnectionInitiation(request []byte, net_platform *NetworkPlatform) e
 	return nil
 }
 
+/*
+Final step of connection reply:
+  - If the reply is received from the node, finally connection is establised
+*/
 func HandleConnectionReply(request []byte, net_platform *NetworkPlatform) error {
 	var payload ConnectionReply
 	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
@@ -112,6 +117,11 @@ func HandleConnectionReply(request []byte, net_platform *NetworkPlatform) error 
 		err := sendDataToAddress(payload.AddrFrom, append(CommandStringToBytes("connection_reply"), GobEncode(send_payload)...), net_platform)
 		if err != nil {
 			return err
+		}
+	} else {
+		if _, id := pending_connection_id[payload.AddrFrom]; id {
+			delete(pending_connection_id, payload.AddrFrom)
+			delete(pending_connection_time, payload.AddrFrom)
 		}
 	}
 
