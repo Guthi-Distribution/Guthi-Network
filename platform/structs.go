@@ -28,10 +28,9 @@ type ConnectionRequest struct {
 }
 
 type ConnectionReply struct {
-	AddrFrom  string
-	ConnectId uint64      // id of the connection
-	Node      NetworkNode // piggyback network Node
-	IsReply   bool        // is this the reply to the reply or just the reply
+	AddrFrom string
+	Node     NetworkNode // piggyback network Node
+	IsReply  bool        // is this the reply to the reply or just the reply
 }
 
 type RequestMessage struct {

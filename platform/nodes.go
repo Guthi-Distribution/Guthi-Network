@@ -21,28 +21,6 @@ const (
 	COMMAND_LENGTH = 16
 )
 
-// Onto nodes discovery
-// How to decide if networks are in sync? ans -> After certain time lol
-// Should this function be called on regular basis? On certain interval or not?
-func SyncWithNetwork(net_platform *NetworkPlatform) uint16 {
-	// Receive information about connected nodes from its neighbor nodes
-	msg := "Hello there"
-	var discovered_nodes uint16
-
-	for _, cached := range net_platform.Connection_caches {
-
-		// This should be bidirectional
-		sendDataToNode(cached.Node_ref, []byte(msg), net_platform)
-
-		// TODO :: Send and receive msg and interpret it
-		// Wait for it them to recieve message and compare to them
-		// Return the IP Address and port number of other nodes which are listening for p2p connection
-		// Read the message and identify new nodes in the network
-		discovered_nodes++
-	}
-	return discovered_nodes
-}
-
 func CreateNetworkNode(name string, address string, port int) (*NetworkNode, error) {
 	networkNode := &NetworkNode{}
 	networkNode.Name = name
@@ -120,7 +98,6 @@ func HandleGetNodes(request []byte, net_platform *NetworkPlatform) error {
 /*
 Handles when nodes information is received
 - Adds the nodes to connected nodes
--
 */
 func HandleNodeResponse(request []byte, net_platform *NetworkPlatform) {
 	var payload NodesMessage
@@ -134,8 +111,6 @@ func HandleNodeResponse(request []byte, net_platform *NetworkPlatform) {
 	}
 	entry := CreateCacheEntry(&payload.Nodes[0], payload.Nodes[0].NodeID)
 	net_platform.Connection_caches = append(net_platform.Connection_caches, entry)
-
-	SyncWithNetwork(net_platform)
 }
 
 /*
