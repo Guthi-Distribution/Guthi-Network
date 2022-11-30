@@ -150,7 +150,11 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 		break
 
 	case "echo":
-		ReplyBack(request[COMMAND_LENGTH:], conn, net_platform)
+		HandleEchoMessage(request[COMMAND_LENGTH:], net_platform)
+		break
+
+	case "echo_reply":
+		HandleEchoReply(request[COMMAND_LENGTH:], net_platform)
 		break
 
 	case "connect":
@@ -184,7 +188,6 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 	case "filesystem":
 		HandleReceiveFileSystem(request[COMMAND_LENGTH:], net_platform)
 		break
-
 	}
 	return nil
 }
@@ -219,6 +222,7 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 	log.Printf("Localhost is listening ... \n")
 	go RequestInfomation(net_platform)
 	go CommunicateFileSystem(net_platform)
+	go Synchronize(net_platform)
 	for {
 		conn, _ := listener.Accept()
 		if err != nil {

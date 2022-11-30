@@ -61,22 +61,22 @@ func HandleEchoReply(request []byte, net_platform *NetworkPlatform) error {
 	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
 
 	if !payload.IsReply {
-		// then a reply is recieved, reply with the self node information
+		// echo reply is recieved
 		send_payload := EchoReply{
 			AddrFrom: net_platform.GetNodeAddress(),
 			IsReply:  true,
 		}
-		err := sendDataToAddress(payload.AddrFrom, append(CommandStringToBytes("connection_reply"), GobEncode(send_payload)...), net_platform)
+		pending_connection_time[payload.AddrFrom] = uint64(time.Now().Unix())
+		err := sendDataToAddress(payload.AddrFrom, append(CommandStringToBytes("echo_reply"), GobEncode(send_payload)...), net_platform)
 		if err != nil {
 			return err
 		}
-	} else {
-		// if the data is received delete it from the pending connection information
-		if _, id := pending_connection_time[payload.AddrFrom]; id {
-			delete(pending_connection_time, payload.AddrFrom)
-		}
 	}
 
+	// if the data is received delete it from the pending connection information
+	if _, id := pending_connection_time[payload.AddrFrom]; id {
+		delete(pending_connection_time, payload.AddrFrom)
+	}
 	return nil
 }
 
@@ -86,6 +86,7 @@ func CheckForResponse(net_platform *NetworkPlatform) {
 		// if the response is not received in 10 seconds remove it from connected nodes
 		// handle node failure
 		if curr_time-send_time > 10 {
+			delete(pending_connection_time, node)
 			net_platform.AddToPreviousNodes(node)
 			net_platform.RemoveNodeWithAddress(node)
 		}
@@ -95,6 +96,10 @@ func CheckForResponse(net_platform *NetworkPlatform) {
 func Synchronize(net_platform *NetworkPlatform) {
 	prev_time_send := uint64(time.Now().Unix())
 	prev_time_check := uint64(time.Now().Unix())
+
+	for _, node := range net_platform.Connected_nodes {
+		SendEchoMessage(node.GetAddressString(), net_platform)
+	}
 	for true {
 		curr_time := uint64(time.Now().Unix())
 
@@ -107,7 +112,7 @@ func Synchronize(net_platform *NetworkPlatform) {
 		}
 
 		// check every 5 sec
-		if curr_time-prev_time_check > 5 {
+		if curr_time-prev_time_check > 10 {
 			prev_time_check = curr_time
 			CheckForResponse(net_platform)
 		}
