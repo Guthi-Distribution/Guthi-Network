@@ -1,0 +1,15 @@
+{
+  "cloudflare": "time.cloudflare.com",
+  "google0": "time.google.com",
+  "google1": "time1.google.com",
+  "google2": "time2.google.com",
+  "google3": "time3.google.com",
+  "google4": "time4.google.com",
+  "facebook0": "time.facebook.com",
+  "facebook1": "time1.facebook.com",
+  "facebook2": "time2.facebook.com",
+  "facebook3": "time3.facebook.com",
+  "facebook4": "time4.facebook.com",
+  "facebook5": "time5.facebook.com",
+  "microsoft": "time.windows.com"
+}
