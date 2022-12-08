@@ -2,6 +2,7 @@ package platform
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -48,10 +49,10 @@ func sendDataToNode(node *NetworkNode, data []byte, net_platform *NetworkPlatfor
 }
 
 func sendDataToAddress(addr string, data []byte, net_platform *NetworkPlatform) error {
+	fmt.Printf("Hello there")
 	conn, err := net.Dial("tcp", addr)
-
 	if err != nil {
-		log.Printf("Connection Failed, for node with address: %s\n", addr)
+		log.Printf("Connection Failed, for node with address: %s\nError: %s", addr, err)
 		net_platform.AddToPreviousNodes(addr)
 		net_platform.RemoveNodeWithAddress(addr)
 		//TODO: handle node failure
@@ -66,4 +67,34 @@ func sendDataToAddress(addr string, data []byte, net_platform *NetworkPlatform) 
 	}
 
 	return err
+}
+
+func getForwardSlashPosition(value string) int {
+	for i, c := range value {
+		if c == '/' {
+			return i
+		}
+	}
+
+	return -1
+}
+
+func GetNodeAddress() string {
+	addresses, err := net.InterfaceAddrs()
+	if err != nil {
+		log.Panic(err.Error())
+	}
+
+	for _, addr := range addresses {
+		addr_string := addr.String()
+		position := getForwardSlashPosition(addr_string)
+
+		if addr_string[:3] == "192" {
+			return addr_string[:position]
+		}
+	}
+
+	err = errors.New("Address not found")
+	log.Panic(err)
+	return ""
 }
