@@ -4,13 +4,12 @@ package main
 
 import (
 	"GuthiNetwork/api"
+	"GuthiNetwork/core"
 	"GuthiNetwork/platform"
 	"flag"
 	"fmt"
 	"log"
 	"time"
-
-	"GuthiNetwork/core"
 )
 
 func wait_loop(elapsed time.Duration) {
@@ -24,8 +23,11 @@ func wait_loop(elapsed time.Duration) {
 }
 
 func main() {
-	core.Initialize()
-	go core.ReadSharedMemory()
+	err := core.Initialize()
+	// if err != nil {
+	// 	log.Fatal(err.Error())
+	// }
+	// go core.ReadSharedMemory()
 	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
 	flag.Parse()
 	net_platform, err := platform.CreateNetworkPlatform("localhost", "localhost", *port)
