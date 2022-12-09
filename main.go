@@ -4,6 +4,7 @@ package main
 
 import (
 	"GuthiNetwork/api"
+	"GuthiNetwork/core"
 	"GuthiNetwork/platform"
 	"flag"
 	"fmt"
@@ -22,7 +23,7 @@ func wait_loop(elapsed time.Duration) {
 }
 
 func main() {
-	// err := core.Initialize()
+	err := core.Initialize()
 	// if err != nil {
 	// 	log.Fatal(err.Error())
 	// }
@@ -36,7 +37,7 @@ func main() {
 
 	// send request to the central node
 	if net_platform.Self_node.Socket.Port != 6969 {
-		net_platform.ConnectToNode("192.168.161.68:6969") // one of the way to connect to a particular node, request all the nodes information it has
+		net_platform.ConnectToNode("127.0.0.1:6969") // one of the way to connect to a particular node, request all the nodes information it has
 	}
 	if *port == 6969 {
 		go api.StartServer(net_platform)

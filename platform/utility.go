@@ -49,7 +49,6 @@ func sendDataToNode(node *NetworkNode, data []byte, net_platform *NetworkPlatfor
 }
 
 func sendDataToAddress(addr string, data []byte, net_platform *NetworkPlatform) error {
-	fmt.Printf("Hello there")
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		log.Printf("Connection Failed, for node with address: %s\nError: %s", addr, err)
