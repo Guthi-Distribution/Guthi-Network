@@ -38,7 +38,7 @@ typedef struct Semaphore {
 
 Semaphore* CreateSem() {
 	Semaphore *s = (Semaphore *)malloc(sizeof(Semaphore));
-	s->semHnd = CreateSemaphore(NULL, 1, 1, sem_name);
+	s->semHnd = OpenSemaphore(SEMAPHORE_ALL_ACCESS, 0, sem_name);;
 	s->err = NULL;
 	if (s->semHnd == NULL) {
 		s->err = print_error("Semaphore creation error");

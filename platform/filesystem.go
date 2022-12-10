@@ -6,7 +6,6 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
-	"time"
 )
 
 func SendGetFileSystem(addr string, net_platform *NetworkPlatform) error {
@@ -46,10 +45,10 @@ For now regularly file system is requested,
 later it is sent when an event occurs
 */
 func CommunicateFileSystem(net_platform *NetworkPlatform) {
-	for true {
-		time.Sleep(time.Second * 10)
-		for _, node := range net_platform.Connected_nodes {
-			SendGetFileSystem(node.GetAddressString(), net_platform)
-		}
-	}
+	// for true {
+	// 	time.Sleep(time.Second * 10)
+	// 	for _,  := range net_platform.Connected_nodes {
+	// 		// SendGetFileSystem(node.GetAddressString(), net_platform)
+	// 	}
+	// }
 }
