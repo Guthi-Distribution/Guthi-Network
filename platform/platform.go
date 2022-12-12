@@ -32,7 +32,7 @@ func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatf
 	platform := &NetworkPlatform{}
 
 	var err error
-	platform.Self_node, err = CreateNetworkNode(name, address, port)
+	platform.Self_node, err = CreateNetworkNode(name, GetNodeAddress(), port)
 	if err != nil {
 		return nil, err
 	}

@@ -31,6 +31,7 @@ func main() {
 	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
 	flag.Parse()
 	net_platform, err := platform.CreateNetworkPlatform("localhost", "localhost", *port)
+	fmt.Println(net_platform.Self_node.Socket.IP)
 	if err != nil {
 		log.Fatalf("Platform Creation error: %s", err)
 	}
