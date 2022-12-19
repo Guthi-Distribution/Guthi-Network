@@ -4,7 +4,11 @@ package main
 
 import (
 	"GuthiNetwork/api"
+<<<<<<< HEAD
 	"GuthiNetwork/lib"
+=======
+	"GuthiNetwork/core"
+>>>>>>> 66cf85f2047b38e2cb00a9951164edaae563c8b6
 	"GuthiNetwork/platform"
 	"flag"
 	"fmt"
@@ -38,6 +42,15 @@ func main() {
 	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
 	flag.Parse()
 	net_platform, err := platform.CreateNetworkPlatform("sanskar", "localhost", *port)
+	err := core.Initialize()
+	// if err != nil {
+	// 	log.Fatal(err.Error())
+	// }
+	// go core.ReadSharedMemory()
+	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
+	flag.Parse()
+	net_platform, err := platform.CreateNetworkPlatform("localhost", "localhost", *port)
+	fmt.Println(net_platform.Self_node.Socket.IP)
 	if err != nil {
 		log.Fatalf("Platform Creation error: %s", err)
 	}
