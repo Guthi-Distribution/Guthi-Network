@@ -43,7 +43,7 @@ func main() {
 	}
 
 	// send request to the central node
-	if net_platform.Self_node.Socket.Port != 7000 {
+	if net_platform.Self_node.Socket.Port != 6969 {
 		net_platform.ConnectToNode("192.168.45.68:6969") // one of the way to connect to a particular node, request all the nodes information it has
 	}
 	if *port == 6969 {
