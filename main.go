@@ -4,7 +4,7 @@ package main
 
 import (
 	"GuthiNetwork/api"
-	"GuthiNetwork/core"
+	"GuthiNetwork/lib"
 	"GuthiNetwork/platform"
 	"flag"
 	"fmt"
@@ -23,21 +23,28 @@ func wait_loop(elapsed time.Duration) {
 }
 
 func main() {
-	err := core.Initialize()
+	// v, err := lib.CreateVariable("a", 2)
 	// if err != nil {
-	// 	log.Fatal(err.Error())
+	// 	log.Fatal(err)
 	// }
-	// go core.ReadSharedMemory()
+	// v.SetValue(3)
+	// log.Println(v.GetValue())
+	// err := core.Initialize()
+	// // if err != nil {
+	// // 	log.Fatal(err.Error())
+	// // }
+	// // go core.ReadSharedMemory()
+	lib.CreateVariable("a", 2)
 	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
 	flag.Parse()
-	net_platform, err := platform.CreateNetworkPlatform("localhost", "localhost", *port)
+	net_platform, err := platform.CreateNetworkPlatform("sanskar", "localhost", *port)
 	if err != nil {
 		log.Fatalf("Platform Creation error: %s", err)
 	}
 
 	// send request to the central node
-	if net_platform.Self_node.Socket.Port != 6969 {
-		net_platform.ConnectToNode("127.0.0.1:6969") // one of the way to connect to a particular node, request all the nodes information it has
+	if net_platform.Self_node.Socket.Port != 7000 {
+		net_platform.ConnectToNode("192.168.45.68:6969") // one of the way to connect to a particular node, request all the nodes information it has
 	}
 	if *port == 6969 {
 		go api.StartServer(net_platform)

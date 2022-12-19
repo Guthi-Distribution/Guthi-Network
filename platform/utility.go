@@ -49,6 +49,7 @@ func sendDataToNode(node *NetworkNode, data []byte, net_platform *NetworkPlatfor
 }
 
 func sendDataToAddress(addr string, data []byte, net_platform *NetworkPlatform) error {
+	// This is a blocking call make it non blocking
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		log.Printf("Connection Failed, for node with address: %s\nError: %s", addr, err)
@@ -88,7 +89,7 @@ func GetNodeAddress() string {
 		addr_string := addr.String()
 		position := getForwardSlashPosition(addr_string)
 
-		if addr_string[:3] == "192" {
+		if addr_string[:3] == "192" || addr_string[:2] == "10" {
 			return addr_string[:position]
 		}
 	}
