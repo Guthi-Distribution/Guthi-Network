@@ -107,7 +107,7 @@ func HandleReceiveCpuInformation(request []byte, net_platfom *NetworkPlatform) e
 
 func RequestInfomation(net_platform *NetworkPlatform) {
 	for true {
-		time.Sleep(time.Second * 2)
+		time.Sleep(time.Second * 5)
 		for _, node := range net_platform.Connected_nodes {
 			SendGetCpuInfomation(node.GetAddressString(), net_platform)
 			SendGetMemoryInfomation(node.GetAddressString(), net_platform)

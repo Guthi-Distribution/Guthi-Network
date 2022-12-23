@@ -4,11 +4,13 @@ package main
 
 import (
 	"GuthiNetwork/api"
-	"GuthiNetwork/core"
 	"GuthiNetwork/platform"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"sync"
 	"time"
 )
 
@@ -22,15 +24,33 @@ func wait_loop(elapsed time.Duration) {
 	}
 }
 
+type Config struct {
+	Name    string `json:"name"`
+	Address string `json:"address"`
+}
+
+func LoadConfiguration(file string) Config {
+	var config Config
+	configFile, err := os.Open(file)
+	defer configFile.Close()
+	if err != nil {
+		config.Name = ""
+		config.Address = ""
+		return config
+	}
+	jsonParser := json.NewDecoder(configFile)
+	jsonParser.Decode(&config)
+	return config
+}
+
 func main() {
-	err := core.Initialize()
-	// if err != nil {
-	// 	log.Fatal(err.Error())
-	// }
-	// go core.ReadSharedMemory()
 	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
 	flag.Parse()
-	net_platform, err := platform.CreateNetworkPlatform("localhost", "localhost", *port)
+	config := LoadConfiguration("config.json")
+	net_platform, err := platform.CreateNetworkPlatform(config.Name, config.Address, *port)
+
+	net_platform.CreateVariable("a", 2)
+
 	fmt.Println(net_platform.Self_node.Socket.IP)
 	if err != nil {
 		log.Fatalf("Platform Creation error: %s", err)
@@ -43,5 +63,10 @@ func main() {
 	if *port == 6969 {
 		go api.StartServer(net_platform)
 	}
+	var sg sync.WaitGroup
+	sg.Add(1)
 	platform.ListenForTCPConnection(net_platform) // listen for connection
+
+	net_platform.CreateVariable("a", "hello there")
+	sg.Wait()
 }

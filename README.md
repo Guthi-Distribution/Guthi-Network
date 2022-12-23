@@ -7,6 +7,16 @@ Network part of the **Guthi-Distribution** project done as a final year project 
 
 
 ### Build Instruction 
+Create a `config.json` as shown below:
+```
+{
+    "name": "node_name",
+    "address": "ip_address" // if you want to use localhost use ""
+}
+```
+
+
+* Build and run the executable and use of `-port` parameter is optional and default is port `6969`. 
 ```
 go build
 ./GuthiNetwork

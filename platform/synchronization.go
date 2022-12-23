@@ -86,9 +86,11 @@ func CheckForResponse(net_platform *NetworkPlatform) {
 		// if the response is not received in 10 seconds remove it from connected nodes
 		// handle node failure
 		if curr_time-send_time > 10 {
-			delete(pending_connection_time, node)
-			net_platform.AddToPreviousNodes(node)
-			net_platform.RemoveNodeWithAddress(node)
+			if _, id := pending_connection_time[node]; id {
+				delete(pending_connection_time, node)
+				net_platform.AddToPreviousNodes(node)
+				net_platform.RemoveNodeWithAddress(node)
+			}
 		}
 	}
 }
@@ -111,7 +113,7 @@ func Synchronize(net_platform *NetworkPlatform) {
 			}
 		}
 
-		// check every 5 sec
+		// check every 10 sec
 		if curr_time-prev_time_check > 10 {
 			prev_time_check = curr_time
 			CheckForResponse(net_platform)
