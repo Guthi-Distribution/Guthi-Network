@@ -2,7 +2,6 @@ package platform
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -93,8 +92,7 @@ func GetNodeAddress() string {
 			return addr_string[:position]
 		}
 	}
-
-	err = errors.New("Address not found")
-	log.Panic(err)
-	return ""
+	log.Print("Address not found")
+	// return localhost if other is not found
+	return "127.0.0.1"
 }

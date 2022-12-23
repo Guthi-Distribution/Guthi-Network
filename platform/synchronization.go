@@ -113,7 +113,7 @@ func Synchronize(net_platform *NetworkPlatform) {
 			}
 		}
 
-		// check every 5 sec
+		// check every 10 sec
 		if curr_time-prev_time_check > 10 {
 			prev_time_check = curr_time
 			CheckForResponse(net_platform)

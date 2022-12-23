@@ -211,11 +211,6 @@ func GobEncode(data interface{}) []byte {
 func ListenForTCPConnection(net_platform *NetworkPlatform) {
 	// create a listener that is used to listen to other connection (somethong like that)
 	// Listen announces on the local network address. @docs
-	listener, err := net.Listen("tcp", net_platform.Self_node.Socket.String())
-	if err != nil {
-		log.Fatalf("Listener error: %s\n", err.Error())
-	}
-	defer listener.Close()
 
 	// The call to listen always blocks
 	// There's no way to get notified when there is a pending connection in Go?
@@ -224,7 +219,7 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 	go CommunicateFileSystem(net_platform)
 	go Synchronize(net_platform)
 	for {
-		conn, _ := listener.Accept()
+		conn, err := net_platform.listener.Accept()
 		if err != nil {
 			fmt.Printf("Failed to Accept the incoming connection.  Error: %s\n", err.Error())
 			break
