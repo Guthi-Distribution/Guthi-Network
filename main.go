@@ -34,7 +34,9 @@ func LoadConfiguration(file string) Config {
 	configFile, err := os.Open(file)
 	defer configFile.Close()
 	if err != nil {
-		log.Fatal(err.Error())
+		config.Name = ""
+		config.Address = ""
+		return config
 	}
 	jsonParser := json.NewDecoder(configFile)
 	jsonParser.Decode(&config)
