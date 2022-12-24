@@ -24,4 +24,7 @@ fetchPromise
             `;
             table.append(row);
         });
+    }).catch(error => {
+        console.log(error);
+
     });
