@@ -2,6 +2,7 @@ package platform
 
 import (
 	"GuthiNetwork/core"
+	"GuthiNetwork/lib"
 	"net"
 	"time"
 )
@@ -22,19 +23,29 @@ func (node *NetworkNode) GetAddressString() string {
 
 type NetworkPlatform struct {
 	// Well, there's just a single writer but multiple readers. So RWMutex sounds better choice
-	Self_node         *NetworkNode
-	Connected_nodes   []NetworkNode // nodes that are connected right noe
-	Available_nodes   []NetworkNode // nodes information that are available to connect
-	Connection_caches []CacheEntry
+	Self_node          *NetworkNode `json:"self_node"`
+	symbol_table       lib.SymbolTable
+	listener           net.Listener
+	Connected_nodes    []NetworkNode `json:"connected_nodes"` // nodes that are connected right noe
+	Connection_History []string      `json:"history"`         // nodes information that are prevoisly connected
+	Connection_caches  []CacheEntry  `json:"cache_entry"`
 }
 
 func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatform, error) {
 	platform := &NetworkPlatform{}
 
 	var err error
+	if address == "" {
+		address = GetNodeAddress()
+	}
 	platform.Self_node, err = CreateNetworkNode(name, address, port)
+	platform.symbol_table = make(lib.SymbolTable)
 	if err != nil {
 		return nil, err
+	}
+	platform.listener, err = net.Listen("tcp", platform.Self_node.Socket.String())
+	if err != nil {
+		return platform, err
 	}
 
 	return platform, nil
@@ -52,6 +63,15 @@ func (self *NetworkPlatform) RemoveNode(node NetworkNode) {
 	}
 
 	self.Connected_nodes = new_arr
+}
+
+func (self *NetworkPlatform) AddToPreviousNodes(addr string) {
+	for _, node := range self.Connection_History {
+		if node == addr {
+			return
+		}
+	}
+	self.Connection_History = append(self.Connection_History, addr)
 }
 
 func (self *NetworkPlatform) AddNode(node NetworkNode) {
@@ -112,4 +132,22 @@ func (self *NetworkPlatform) get_node_from_string(addr string) int {
 		}
 	}
 	return -1
+}
+
+func (net_platform *NetworkPlatform) CreateVariable(id string, data any) error {
+	err := lib.CreateVariable(id, data, &net_platform.symbol_table)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (net_platform *NetworkPlatform) CreateOrSetValue(id string, data any) error {
+	err := lib.CreateOrSetValue(id, data, &net_platform.symbol_table)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

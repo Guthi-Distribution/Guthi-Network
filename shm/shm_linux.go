@@ -1,6 +1,7 @@
 package shm
 
 import (
+	"errors"
 	"fmt"
 	"syscall"
 
@@ -20,9 +21,13 @@ func CreateSharedMemory() (*SharedMemory, error) {
 	shm_memory.desc = &unix.SysvShmDesc{}
 
 	shm_memory.key = 69
-	id, err := unix.SysvShmGet(shm_memory.key, 4100, unix.IPC_CREAT|(syscall.S_IRUSR|syscall.S_IWUSR|syscall.S_IRGRP|syscall.S_IWGRP))
+	id, err := unix.SysvShmGet(shm_memory.key, 4098, (syscall.S_IRUSR | syscall.S_IWUSR | syscall.S_IRGRP | syscall.S_IWGRP))
 	shm_memory.Id = id
 	if err != nil {
+		// a way for a specific error rather than just reading the error, and ofc go does not provide data of error variable
+		if err.Error() == "no such file or directory" {
+			return nil, errors.New("Shared Memory does not exist, Run core executable first")
+		}
 		fmt.Printf("Memory creation error: %s\n", err)
 		return nil, err
 	}

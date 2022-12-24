@@ -5,13 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/gob"
 	"fmt"
-	"log"
 	"net"
-	"time"
 )
-
-// TODO: Connection timeout feature added
-var pending_connection = make(map[string]uint64)
 
 /*
 Initiate TCP Connection, creates connection and returns the connection
@@ -37,7 +32,6 @@ func (net_platform *NetworkPlatform) ConnectToNode(address string) error {
 		AddrFrom:  net_platform.Self_node.Socket.String(),
 		ConnectId: rand_num.Uint64(),
 	}
-	pending_connection[address] = uint64(time.Now().Unix())
 	// connect to the network
 	data := GobEncode(payload)
 	data = append(CommandStringToBytes("connect"), data...)
@@ -51,38 +45,15 @@ func (net_platform *NetworkPlatform) ConnectToNode(address string) error {
 }
 
 /*
-Connect to the node, to a specific node
-Returns:
-
-	error if any has occured
-*/
-func ConnectToNetwork(node *NetworkNode, net_platform *NetworkPlatform) error {
-	// Connect as a client to the network
-	// Maybe implement something like OSPF routing algorithm to create map of the network ??
-	_, err := intiateTCPConnection(node)
-	if err != nil {
-		log.Printf("Connection setup error: %s", err)
-		return err
-	}
-
-	// TODO :: Perform other necessary actions to get in sync with the network
-	entry := CreateCacheEntry(node, node.NodeID)
-	net_platform.Connection_caches = append(net_platform.Connection_caches, entry)
-	SyncWithNetwork(net_platform)
-	return nil
-}
-
-/*
-Respond to connect request from the node
+Respond to connect request from a node
 */
 func HandleConnectionInitiation(request []byte, net_platform *NetworkPlatform) error {
 	var payload ConnectionRequest
 	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
 	send_payload := ConnectionReply{
-		AddrFrom:  net_platform.GetNodeAddress(),
-		Node:      *net_platform.Self_node,
-		ConnectId: payload.ConnectId + 1,
-		IsReply:   false,
+		AddrFrom: net_platform.GetNodeAddress(),
+		Node:     *net_platform.Self_node,
+		IsReply:  false,
 	}
 
 	err := sendDataToAddress(payload.AddrFrom, append(CommandStringToBytes("connection_reply"), GobEncode(send_payload)...), net_platform)
@@ -96,6 +67,10 @@ func HandleConnectionInitiation(request []byte, net_platform *NetworkPlatform) e
 	return nil
 }
 
+/*
+Final step of connection reply:
+  - If the reply is received from the node, finally connection is establised
+*/
 func HandleConnectionReply(request []byte, net_platform *NetworkPlatform) error {
 	var payload ConnectionReply
 	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
@@ -104,10 +79,9 @@ func HandleConnectionReply(request []byte, net_platform *NetworkPlatform) error 
 	if !payload.IsReply {
 		// then a reply is recieved, reply with the self node information
 		send_payload := ConnectionReply{
-			AddrFrom:  net_platform.GetNodeAddress(),
-			Node:      *net_platform.Self_node,
-			ConnectId: payload.ConnectId + 1,
-			IsReply:   true,
+			AddrFrom: net_platform.GetNodeAddress(),
+			Node:     *net_platform.Self_node,
+			IsReply:  true,
 		}
 		err := sendDataToAddress(payload.AddrFrom, append(CommandStringToBytes("connection_reply"), GobEncode(send_payload)...), net_platform)
 		if err != nil {

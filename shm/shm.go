@@ -5,15 +5,15 @@ type ShmSegment struct {
 	buff  []byte
 }
 
-func (memory *SharedMemory) WriteSharedMemory(data []byte) {
+type MESSAGE_TYPE uint8
+
+func (memory *SharedMemory) WriteSharedMemory(data []byte, message MESSAGE_TYPE) {
 	length := uint16(len(data))
 	memory.shm_segment.count = uint16(len(data))
 
-	// TODO: Fix encoding
-	// currently only memory alignment is used
-	// the good old C way
+	message_type := byte(message + '0')
 	length_buff := []byte{
-		byte(length & 0xff), byte((length >> 8) & 0xff),
+		byte(length & 0xff), byte((length >> 8) & 0xff), '1', message_type,
 	}
 	data = append(length_buff, data...)
 	copy(memory.shm_segment.buff, data)
