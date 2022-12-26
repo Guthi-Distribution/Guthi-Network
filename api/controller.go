@@ -7,6 +7,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type AddressModel struct {
+	IP   string `json:"ip"`
+	Port string `json:"port"`
+}
+
 func GetAvailableNodes(network_platform *platform.NetworkPlatform) gin.HandlerFunc {
 	fn := func(c *gin.Context) {
 		c.JSON(200, network_platform.Connected_nodes)
@@ -24,13 +29,14 @@ func GetSelfNode(network_platform *platform.NetworkPlatform) gin.HandlerFunc {
 
 func PostConnectNode(network_platform *platform.NetworkPlatform) gin.HandlerFunc {
 	fn := func(c *gin.Context) {
-		var address string
-		if err := c.BindJSON(address); err != nil {
+		var address AddressModel
+		if err := c.BindJSON(&address); err != nil {
 			c.AbortWithError(400, err)
 			return
 		}
+		c.JSON(200, 1)
 
-		network_platform.ConnectToNode(address)
+		network_platform.ConnectToNode(address.IP + ":" + address.Port)
 	}
 
 	return fn
