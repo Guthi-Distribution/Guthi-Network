@@ -28,3 +28,33 @@ fetchPromise
         console.log(error);
 
     });
+
+
+// POST request to http://localhost:8080/connect
+
+const connectForm = document.getElementById("connect-form");
+
+connectForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const formData = new FormData(connectForm);
+    const data = {
+        "ip": formData.get("ip"),
+        "port": formData.get("port")
+    }
+
+    fetch('http://localhost:8080/connect', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    }).then(response => {
+        if (!response.ok) {
+            console.log(`HTTP error: ${response.status}`);
+            throw new Error(`HTTP error: ${response.status}`);
+        }
+    }).catch(error => {
+        console.log(error);
+    })
+
+});

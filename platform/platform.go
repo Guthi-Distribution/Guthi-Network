@@ -36,7 +36,7 @@ func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatf
 
 	var err error
 	if address == "" {
-		address = GetNodeAddress()
+		address = "127.0.0.1"
 	}
 	platform.Self_node, err = CreateNetworkNode(name, address, port)
 	platform.symbol_table = make(lib.SymbolTable)
