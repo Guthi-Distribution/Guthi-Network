@@ -37,6 +37,9 @@ func sum(total_sum *lib.Variable, net_platform *platform.NetworkPlatform) {
 		prev_sum = total_sum.GetData().(int)
 		prev_sum += i
 		net_platform.CreateOrSetValue(total_sum.Id, prev_sum)
+		variable, _ := net_platform.GetValue(total_sum.Id)
+		*total_sum = variable
+		fmt.Printf("Total sum: %d\n", variable.GetData())
 		time.Sleep(time.Millisecond * 10)
 	}
 }
@@ -84,6 +87,6 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 	reader.ReadString('\n')
 	sum(&total_sum, net_platform)
-	sg.Wait()
 	fmt.Printf("Total sum: %d\n", total_sum.GetData())
+	sg.Wait()
 }
