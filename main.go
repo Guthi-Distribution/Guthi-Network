@@ -4,6 +4,7 @@ package main
 
 import (
 	"GuthiNetwork/api"
+	"GuthiNetwork/lib"
 	"GuthiNetwork/platform"
 	"encoding/json"
 	"flag"
@@ -29,6 +30,15 @@ type Config struct {
 	Address string `json:"address"`
 }
 
+func sum(total_sum *lib.Variable) {
+	for i := 0; i <= 100; i++ {
+		prev_sum := 0
+		prev_sum = total_sum.GetData().(int)
+		prev_sum += i
+		total_sum.SetValue(prev_sum)
+	}
+}
+
 func LoadConfiguration(file string) Config {
 	var config Config
 	configFile, err := os.Open(file)
@@ -49,8 +59,6 @@ func main() {
 	config := LoadConfiguration("config.json")
 	net_platform, err := platform.CreateNetworkPlatform(config.Name, config.Address, *port)
 
-	net_platform.CreateVariable("a", 2)
-
 	fmt.Println(net_platform.Self_node.Socket.IP)
 	if err != nil {
 		log.Fatalf("Platform Creation error: %s", err)
@@ -65,8 +73,12 @@ func main() {
 	}
 	var sg sync.WaitGroup
 	sg.Add(1)
-	platform.ListenForTCPConnection(net_platform) // listen for connection
+	go platform.ListenForTCPConnection(net_platform) // listen for connection
 
-	net_platform.CreateVariable("a", "hello there")
+	net_platform.CreateVariable("total_sum", int(0))
+
+	total_sum, err := net_platform.GetValue("total_sum")
+	sum(&total_sum)
+	fmt.Printf("Total sum: %d\n", total_sum.GetData())
 	sg.Wait()
 }

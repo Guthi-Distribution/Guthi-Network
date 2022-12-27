@@ -3,6 +3,7 @@ package platform
 import (
 	"GuthiNetwork/core"
 	"GuthiNetwork/lib"
+	"errors"
 	"net"
 	"time"
 )
@@ -150,4 +151,12 @@ func (net_platform *NetworkPlatform) CreateOrSetValue(id string, data any) error
 	}
 
 	return nil
+}
+
+func (net_platform *NetworkPlatform) GetValue(id string) (lib.Variable, error) {
+	if _, exists := net_platform.symbol_table[id]; !exists {
+		return lib.Variable{}, errors.New("Identifier not found")
+	}
+
+	return net_platform.symbol_table[id], nil
 }
