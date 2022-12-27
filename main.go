@@ -6,6 +6,7 @@ import (
 	"GuthiNetwork/api"
 	"GuthiNetwork/lib"
 	"GuthiNetwork/platform"
+	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -78,6 +79,8 @@ func main() {
 	net_platform.CreateVariable("total_sum", int(0))
 
 	total_sum, err := net_platform.GetValue("total_sum")
+	reader := bufio.NewReader(os.Stdin)
+	reader.ReadString('\n')
 	sum(&total_sum)
 	fmt.Printf("Total sum: %d\n", total_sum.GetData())
 	sg.Wait()
