@@ -14,11 +14,11 @@ Variable that is communicated in distributed network
 */
 type Variable struct {
 	Id      string // id is basically variable name
-	Dtype   reflect.Type
+	Dtype   string
 	IsConst bool // if it is constant, we don't need to request for it to another node, we can just retrieve iit locally
 
 	// FIXME: may need something else, because json can be too bloated
-	Data      reflect.Value
+	Data      interface{}
 	Timestamp time.Time
 }
 
@@ -27,8 +27,8 @@ func CreateVariable(id string, data any, symbol_table *SymbolTable) error {
 	if _, found := (*symbol_table)[id]; found {
 		return errors.New("Variable already exist")
 	}
-	value.Dtype = reflect.TypeOf(data)
-	value.Data = reflect.ValueOf(data)
+	value.Dtype = reflect.TypeOf(data).String()
+	value.Data = data
 	value.IsConst = false
 
 	value.Id = id
@@ -44,8 +44,8 @@ func CreateConstantVariable(id string, data any, symbol_table *SymbolTable) erro
 		return errors.New("Variable already exist")
 	}
 
-	value.Dtype = reflect.TypeOf(data)
-	value.Data = reflect.ValueOf(data)
+	value.Dtype = reflect.TypeOf(data).String()
+	value.Data = data
 	value.IsConst = true
 
 	value.Id = id
@@ -62,8 +62,8 @@ func CreateOrSetValue(id string, data any, symbol_table *SymbolTable) error {
 			return errors.New("Type mismatch for previous and new value")
 		}
 	}
-	value.Dtype = reflect.TypeOf(data)
-	value.Data = reflect.ValueOf(data)
+	value.Dtype = reflect.TypeOf(data).String()
+	value.Data = data
 
 	value.IsConst = false
 
@@ -76,14 +76,14 @@ func (value *Variable) SetValue(data any) error {
 	if value.IsConst == true {
 		return errors.New("Cannot Write to a constant variable")
 	}
-	if value.Dtype != reflect.TypeOf(data) {
+	if value.Dtype != reflect.TypeOf(data).String() {
 		return errors.New("Type mismatch for previous and new value")
 	}
-	value.Data = reflect.ValueOf(data)
+	value.Data = data
 
 	return nil
 }
 
 func (value *Variable) GetData() interface{} {
-	return value.Data.Interface()
+	return value.Data
 }

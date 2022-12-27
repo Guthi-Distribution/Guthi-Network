@@ -37,6 +37,7 @@ func sum(total_sum *lib.Variable, net_platform *platform.NetworkPlatform) {
 		prev_sum = total_sum.GetData().(int)
 		prev_sum += i
 		net_platform.CreateOrSetValue(total_sum.Id, prev_sum)
+		time.Sleep(time.Millisecond * 10)
 	}
 }
 

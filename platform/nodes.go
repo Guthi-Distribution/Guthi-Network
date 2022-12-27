@@ -199,9 +199,8 @@ func GobEncode(data interface{}) []byte {
 
 	// the encoded data is stored in buff and the data to be encoded is `data`
 	err := gob.NewEncoder(&buff).Encode(data)
-
 	if err != nil {
-		log.Panic(err)
+		log.Panic("Gob Encode error:" + err.Error())
 	}
 
 	return buff.Bytes()
