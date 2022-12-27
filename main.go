@@ -66,9 +66,10 @@ func main() {
 	}
 
 	// send request to the central node
-	if net_platform.Self_node.Socket.Port != 6969 {
-		net_platform.ConnectToNode("127.0.0.1:6969") // one of the way to connect to a particular node, request all the nodes information it has
-	}
+	// if net_platform.Self_node.Socket.Port != 6969 {
+	// 	net_platform.ConnectToNode("127.0.0.1:6969") // one of the way to connect to a particular node, request all the nodes information it has
+	// }
+
 	if *port == 6969 {
 		go api.StartServer(net_platform)
 	}
