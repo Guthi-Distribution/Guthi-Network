@@ -137,6 +137,7 @@ func (self *NetworkPlatform) get_node_from_string(addr string) int {
 
 func (net_platform *NetworkPlatform) CreateVariable(id string, data any) error {
 	err := lib.CreateVariable(id, data, &net_platform.symbol_table)
+	SendVariableToNodes(net_platform.symbol_table[id], net_platform)
 	if err != nil {
 		return err
 	}
@@ -146,10 +147,19 @@ func (net_platform *NetworkPlatform) CreateVariable(id string, data any) error {
 
 func (net_platform *NetworkPlatform) CreateOrSetValue(id string, data any) error {
 	err := lib.CreateOrSetValue(id, data, &net_platform.symbol_table)
+	SendVariableToNodes(net_platform.symbol_table[id], net_platform)
 	if err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func (net_platform *NetworkPlatform) SetValue(id string, data any) error {
+	value := net_platform.symbol_table[id]
+	value.SetValue(data)
+	net_platform.symbol_table[id] = value
+	SendVariableToNodes(net_platform.symbol_table[id], net_platform)
 	return nil
 }
 

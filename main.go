@@ -31,12 +31,12 @@ type Config struct {
 	Address string `json:"address"`
 }
 
-func sum(total_sum *lib.Variable) {
+func sum(total_sum *lib.Variable, net_platform *platform.NetworkPlatform) {
 	for i := 0; i <= 100; i++ {
 		prev_sum := 0
 		prev_sum = total_sum.GetData().(int)
 		prev_sum += i
-		total_sum.SetValue(prev_sum)
+		net_platform.CreateOrSetValue(total_sum.Id, prev_sum)
 	}
 }
 
@@ -82,7 +82,7 @@ func main() {
 	total_sum, err := net_platform.GetValue("total_sum")
 	reader := bufio.NewReader(os.Stdin)
 	reader.ReadString('\n')
-	sum(&total_sum)
-	fmt.Printf("Total sum: %d\n", total_sum.GetData())
+	sum(&total_sum, net_platform)
 	sg.Wait()
+	fmt.Printf("Total sum: %d\n", total_sum.GetData())
 }
