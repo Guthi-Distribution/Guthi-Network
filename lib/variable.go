@@ -1,83 +1,108 @@
 package lib
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"reflect"
+	"sync"
 	"time"
 )
 
 // type uint8 types
-type SymbolTable map[string]Variable
+type SymbolTable map[string]*Variable
 
 /*
 Variable that is communicated in distributed network
 */
 type Variable struct {
-	Id    string // id is basically variable name
-	Dtype reflect.Type
+	Id      string // id is basically variable name
+	Dtype   string
+	IsConst bool // if it is constant, we don't need to request for it to another node, we can just retrieve iit locally
 
-	// FIXME: may need something else, because json can be too bloated
-	Data      string // json representation of the string
+	Data      interface{}
 	Timestamp time.Time
+	mutex     sync.Mutex // for locally accessing variable by multiple goroutine
+
 }
 
-// FIXME: do something with id here
 func CreateVariable(id string, data any, symbol_table *SymbolTable) error {
 	value := Variable{}
 	if _, found := (*symbol_table)[id]; found {
 		return errors.New("Variable already exist")
 	}
-
-	value.Dtype = reflect.TypeOf(data)
-
-	buff := bytes.NewBufferString(value.Data)
-	encoder := json.NewEncoder(buff)
-	err := encoder.Encode(data)
-	if err != nil {
-		return err
-	}
-	value.Data = buff.String()
+	value.Dtype = reflect.TypeOf(data).String()
+	value.Data = data
+	value.IsConst = false
 
 	value.Id = id
 	value.Timestamp = time.Now()
-	(*symbol_table)[id] = value
+	(*symbol_table)[id] = &value
+
+	return nil
+}
+
+func CreateConstantVariable(id string, data any, symbol_table *SymbolTable) error {
+	value := Variable{}
+	if _, found := (*symbol_table)[id]; found {
+		return errors.New("Variable already exist")
+	}
+
+	value.Dtype = reflect.TypeOf(data).String()
+	value.Data = data
+	value.IsConst = true
+
+	value.Id = id
+	value.Timestamp = time.Now()
+	(*symbol_table)[id] = &value
 
 	return nil
 }
 
 func CreateOrSetValue(id string, data any, symbol_table *SymbolTable) error {
 	value := Variable{}
-	if _, exists := (*symbol_table)[id]; exists {
+	if variable, exists := (*symbol_table)[id]; exists {
 		if reflect.TypeOf((*symbol_table)[id].Data) != reflect.TypeOf(data) {
 			return errors.New("Type mismatch for previous and new value")
 		}
+
+		variable.SetValue(data)
+		return nil
 	}
-	value.Dtype = reflect.TypeOf(data)
-	buff := bytes.NewBufferString(value.Data)
-	encoder := json.NewEncoder(buff)
-	err := encoder.Encode(data)
-	if err != nil {
-		return err
-	}
-	value.Data = buff.String()
-	(*symbol_table)[id] = value
+	value.Dtype = reflect.TypeOf(data).String()
+	value.Data = data
+
+	value.IsConst = false
+
+	(*symbol_table)[id] = &value
 	value.Timestamp = time.Now()
 	return nil
 }
 
 func (value *Variable) SetValue(data any) error {
-	if value.Dtype != reflect.TypeOf(data) {
+	if value.IsConst == true {
+		return errors.New("Cannot Write to a constant variable")
+	}
+	if value.Dtype != reflect.TypeOf(data).String() {
 		return errors.New("Type mismatch for previous and new value")
 	}
-	buff := bytes.NewBufferString(value.Data)
-	encoder := json.NewEncoder(buff)
-	encoder.Encode(data)
-	value.Data = buff.String()
+
+	value.mutex.Lock()
+	value.Data = data
+	value.mutex.Unlock()
+
 	return nil
 }
 
-func (value *Variable) GetValue() any {
+func (value *Variable) GetData() interface{} {
+	value.mutex.Lock()
+	defer value.mutex.Unlock()
 	return value.Data
+}
+
+func (value *Variable) SetVariable(variable *Variable) {
+	value.mutex.Lock()
+	defer value.mutex.Unlock()
+	value.Data = variable.Data
+	value.Timestamp = variable.Timestamp
+	value.Dtype = variable.Dtype
+	value.IsConst = variable.IsConst
 }

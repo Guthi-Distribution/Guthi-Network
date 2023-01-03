@@ -60,14 +60,15 @@ func SetFileSystem(fs FilesystemCore) {
 // Runtime info structure
 // ------------------CPU----------------------
 type ProcessorInfo struct {
-	Processor_number uint32
-	Current_mhz      uint32
-	Total_mhz        uint32
+	Processor_number uint32  `json:"processor_number"`
+	Current_mhz      uint32  `json:"current_mhz"`
+	Total_mhz        uint32  `json:"total_mhz"`
+	Usage            float32 `json:"usage"`
 }
 
 type ProcessorStatus struct {
-	Processor_count uint32
-	Processors      []ProcessorInfo
+	Processor_count uint32          `json:"count"`
+	Processors      []ProcessorInfo `json:"processors"`
 }
 
 func GetProcessorInfo() ProcessorStatus {
@@ -75,6 +76,14 @@ func GetProcessorInfo() ProcessorStatus {
 	status := ProcessorStatus{
 		uint32(info.processor_count),
 		[]ProcessorInfo{},
+	}
+	for i := 0; i < int(status.Processor_count); i++ {
+		status.Processors = append(status.Processors, ProcessorInfo{
+			uint32(info.processors[i].processor_number),
+			uint32(info.processors[i].current_mhz),
+			uint32(info.processors[i].total_mhz),
+			float32(C.GetCurrentAllCPUUsage()),
+		})
 	}
 
 	return status

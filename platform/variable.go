@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"log"
 )
 
 /*
@@ -24,10 +25,10 @@ type TableInfo struct {
 	Table    lib.SymbolTable
 }
 
-func SendVariableToNodes(value lib.Variable, net_platfrom *NetworkPlatform) error {
+func SendVariableToNodes(value *lib.Variable, net_platfrom *NetworkPlatform) error {
 	variable := VariableInfo{
 		net_platfrom.Self_node.GetAddressString(),
-		value,
+		*value,
 	}
 	data := append(CommandStringToBytes("variable"), GobEncode(variable)...)
 	var err error
@@ -48,19 +49,20 @@ func HandleReceiveVariable(request []byte, net_platform *NetworkPlatform) error 
 		return errors.New(fmt.Sprintf("Gob decoder error:%s", err))
 	}
 
-	if _, found := net_platform.symbol_table[payload.Value.Id]; found {
-		if net_platform.symbol_table[payload.Value.Id].Dtype != payload.Value.Dtype {
+	value, found := net_platform.symbol_table[payload.Value.Id]
+	if found {
+		if value.Dtype != payload.Value.Dtype {
 			// Send Error to the node as differnet data type
-		}
-		if !net_platform.symbol_table[payload.Value.Id].Timestamp.Before(payload.Value.Timestamp) {
-			err = SendVariableToNodes(net_platform.symbol_table[payload.Value.Id], net_platform)
+			log.Panic("Type mismatch for received variable")
 		}
 	}
-	err = lib.CreateOrSetValue(payload.Value.Id, payload.Value.Data, &net_platform.symbol_table)
+
+	net_platform.symbol_table[payload.Value.Id].SetVariable(&payload.Value)
+	log.Println("Received Value: ", payload.Value.Data)
 	return nil
 }
 
-func SendTableToNodes(net_platform *NetworkPlatform, address string) error {
+func SendTableToNode(net_platform *NetworkPlatform, address string) error {
 	variables := TableInfo{
 		net_platform.Self_node.GetAddressString(),
 		net_platform.symbol_table,
