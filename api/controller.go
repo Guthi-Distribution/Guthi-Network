@@ -56,3 +56,12 @@ func GetMemoryInfo(network_platform *platform.NetworkPlatform) gin.HandlerFunc {
 
 	return fn
 }
+
+func GetCpuInfo(network_platform *platform.NetworkPlatform) gin.HandlerFunc {
+	fn := func(c *gin.Context) {
+		cpu_info := core.GetProcessorInfo()
+		c.JSON(200, cpu_info)
+	}
+
+	return fn
+}

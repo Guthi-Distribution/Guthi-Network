@@ -60,10 +60,7 @@ func HandleConnectionInitiation(request []byte, net_platform *NetworkPlatform) e
 	if err != nil {
 		return err
 	}
-	if err != nil {
-		return err
-	}
-
+	SendTableToNode(net_platform, payload.AddrFrom)
 	return nil
 }
 
