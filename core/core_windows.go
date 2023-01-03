@@ -63,6 +63,7 @@ type ProcessorInfo struct {
 	Processor_number uint32
 	Current_mhz      uint32
 	Total_mhz        uint32
+	Usage            float32
 }
 
 type ProcessorStatus struct {
@@ -75,6 +76,14 @@ func GetProcessorInfo() ProcessorStatus {
 	status := ProcessorStatus{
 		uint32(info.processor_count),
 		[]ProcessorInfo{},
+	}
+	for i := 0; i < int(status.Processor_count); i++ {
+		status.Processors = append(status.Processors, ProcessorInfo{
+			uint32(info.processors[i].processor_number),
+			uint32(info.processors[i].current_mhz),
+			uint32(info.processors[i].total_mhz),
+			float32(C.GetCurrentAllCPUUsage()),
+		})
 	}
 
 	return status

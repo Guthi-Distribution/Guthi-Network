@@ -3,7 +3,10 @@ package platform
 import (
 	"GuthiNetwork/core"
 	"GuthiNetwork/lib"
+	"errors"
+	"log"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -29,6 +32,7 @@ type NetworkPlatform struct {
 	Connected_nodes    []NetworkNode `json:"connected_nodes"` // nodes that are connected right noe
 	Connection_History []string      `json:"history"`         // nodes information that are prevoisly connected
 	Connection_caches  []CacheEntry  `json:"cache_entry"`
+	muxex              sync.Mutex
 }
 
 func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatform, error) {
@@ -40,6 +44,8 @@ func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatf
 	}
 	platform.Self_node, err = CreateNetworkNode(name, address, port)
 	platform.symbol_table = make(lib.SymbolTable)
+	platform.muxex = sync.Mutex{}
+
 	if err != nil {
 		return nil, err
 	}
@@ -136,6 +142,7 @@ func (self *NetworkPlatform) get_node_from_string(addr string) int {
 
 func (net_platform *NetworkPlatform) CreateVariable(id string, data any) error {
 	err := lib.CreateVariable(id, data, &net_platform.symbol_table)
+	SendVariableToNodes(net_platform.symbol_table[id], net_platform)
 	if err != nil {
 		return err
 	}
@@ -145,9 +152,27 @@ func (net_platform *NetworkPlatform) CreateVariable(id string, data any) error {
 
 func (net_platform *NetworkPlatform) CreateOrSetValue(id string, data any) error {
 	err := lib.CreateOrSetValue(id, data, &net_platform.symbol_table)
+	SendVariableToNodes(net_platform.symbol_table[id], net_platform)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (net_platform *NetworkPlatform) SetValue(id string, data any) error {
+	value := net_platform.symbol_table[id]
+	value.SetValue(data)
+	net_platform.symbol_table[id] = value
+	log.Println("Sending value: ", value.Data)
+	SendVariableToNodes(net_platform.symbol_table[id], net_platform)
+	return nil
+}
+
+func (net_platform *NetworkPlatform) GetValue(id string) (*lib.Variable, error) {
+	if _, exists := net_platform.symbol_table[id]; !exists {
+		return nil, errors.New("Identifier not found")
+	}
+
+	return (*net_platform).symbol_table[id], nil
 }
