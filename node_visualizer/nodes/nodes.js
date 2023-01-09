@@ -61,3 +61,5 @@ connectForm.addEventListener("submit", (e) => {
     })
 
 });
+
+getNodes();
