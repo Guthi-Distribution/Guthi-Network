@@ -101,13 +101,13 @@ func HandleReceiveCpuInformation(request []byte, net_platfom *NetworkPlatform) e
 		// handle if the node information is not available, it can happen if the node is removed
 	}
 	net_platfom.Connection_caches[node_index].Cpu_info = payload.CpuStatus
-
+	net_platfom.Connection_caches[node_index].Cpu_info.Usage = payload.TotalUsage
 	return nil
 }
 
 func RequestInfomation(net_platform *NetworkPlatform) {
 	for true {
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 10)
 		for _, node := range net_platform.Connected_nodes {
 			SendGetCpuInfomation(node.GetAddressString(), net_platform)
 			SendGetMemoryInfomation(node.GetAddressString(), net_platform)

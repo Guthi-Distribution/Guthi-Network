@@ -1,4 +1,4 @@
-const createChart = (container, DATA_COUNT) => {
+const createChart = (name, container, DATA_COUNT) => {
     const ctx = document.getElementById(container);
     const Utils = Chart.helpers;
 
@@ -22,7 +22,7 @@ const createChart = (container, DATA_COUNT) => {
             plugins: {
                 title: {
                     display: true,
-                    text: 'Memory_Load'
+                    text: name
                 },
             },
             interaction: {

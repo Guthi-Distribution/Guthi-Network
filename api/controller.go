@@ -59,8 +59,11 @@ func GetMemoryInfo(network_platform *platform.NetworkPlatform) gin.HandlerFunc {
 
 func GetCpuInfo(network_platform *platform.NetworkPlatform) gin.HandlerFunc {
 	fn := func(c *gin.Context) {
-		cpu_info := core.GetProcessorInfo()
-		c.JSON(200, cpu_info)
+		memory_info := make(map[string]core.ProcessorStatus)
+		for _, cache := range network_platform.Connection_caches {
+			memory_info[cache.Node_ref.Name] = cache.Cpu_info
+		}
+		c.JSON(200, memory_info)
 	}
 
 	return fn
