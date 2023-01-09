@@ -1,11 +1,13 @@
 package platform
 
 import (
+	"GuthiNetwork/lib"
 	"bytes"
 	"crypto/rand"
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -118,5 +120,64 @@ func Synchronize(net_platform *NetworkPlatform) {
 			prev_time_check = curr_time
 			CheckForResponse(net_platform)
 		}
+	}
+}
+
+/*
+Variable synchronization
+*/
+type TokenRequest struct {
+	AddrFrom string
+	Site     SiteInfo
+}
+
+type TokenInfo struct {
+	AddrFrom string
+	Site     SiteInfo
+	Token    lib.Variable
+}
+
+func SendRequestToken(net_platform *NetworkPlatform, site SiteInfo) {
+	payload := TokenRequest{
+		net_platform.GetNodeAddress(),
+		site,
+	}
+	data := append(CommandStringToBytes("token_request_sk"), GobEncode(payload)...)
+	for _, node := range net_platform.Connected_nodes {
+		sendDataToAddress(node.GetAddressString(), data, net_platform)
+	}
+}
+
+func SendTokenToNodes(network_platform *NetworkPlatform, address string, token interface{}) {
+
+}
+
+func HandleTokenRequest(payload_byte []byte, net_platform *NetworkPlatform) {
+	var payload TokenRequest
+	gob.NewDecoder(bytes.NewReader(payload_byte)).Decode(&payload)
+	// synchronization.ReceiveRequest(net_platform, )
+}
+
+// this function will be called from network platform
+// LOG: INTERNAL
+func ListenForToken(net_platform *NetworkPlatform) {
+
+}
+
+// LOG: INTERNAL
+func SendToken(address string, token interface{}) {
+
+}
+
+// WILL BE CALLED INTERNALLY, CAN BE TAKEN TO PLATFORM PACKAGE
+func ReceiveRequest(net_platform *NetworkPlatform, site SiteInfo, token Token, node_id uint64, value uint64) {
+	if site.Request_messages[net_platform.Self_node.NodeID][node_id] < value {
+		site.Request_messages[net_platform.Self_node.NodeID][node_id] = value
+	}
+
+	// TODO: Think of proper way of organizing this code
+	if token.Id == net_platform.Self_node.NodeID && site.Request_messages[net_platform.Self_node.NodeID][node_id] == token.Token_sequence[node_id]+1 {
+		log.Println("Sending token")
+		// TODO Send token to the requesting node
 	}
 }

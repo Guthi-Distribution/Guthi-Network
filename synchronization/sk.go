@@ -2,7 +2,7 @@ package synchronization
 
 import (
 	"GuthiNetwork/platform"
-	"log"
+	"GuthiNetwork/utility"
 )
 
 type Message int8
@@ -12,46 +12,66 @@ const (
 	REPLY_MESSAGE   = 1
 )
 
-type Token struct {
-	Id             uint64 // id of the site having the token
-	Waiting_queue  map[uint64]uint64
-	Token_sequence map[uint64]uint64
-}
+type Token platform.Token
 
-type Site struct {
-	IsExecuting      bool
-	HasToken         bool
-	request_messages map[uint64]map[uint64]uint16
-}
-
-var token Token
-var site Site
-
-func RequestToken(net_platform *platform.NetworkPlatform) {
-	_, found := site.request_messages[net_platform.Self_node.NodeID]
-	if !found {
-		site.request_messages[net_platform.Self_node.NodeID] = make(map[uint64]uint16)
+func CreateToken(net_platform *platform.NetworkPlatform) Token {
+	token := Token{
+		Id:             net_platform.Self_node.NodeID,
+		Waiting_queue:  make([]uint64, 0),
+		Token_sequence: make(map[uint64]uint64),
 	}
-	site.request_messages[net_platform.Self_node.NodeID][net_platform.Self_node.NodeID] += 1
+
+	return token
+}
+
+var site platform.SiteInfo
+
+func (token *Token) Lock(net_platform *platform.NetworkPlatform) {
+	requestToken(net_platform)
+}
+
+func requestToken(net_platform *platform.NetworkPlatform) {
+	if site.HasToken {
+		// it already has the token so do nothing
+		return
+	}
+	_, found := site.Request_messages[net_platform.Self_node.NodeID]
+	if !found {
+		site.Request_messages[net_platform.Self_node.NodeID] = make(map[uint64]uint64)
+	}
+	site.Request_messages[net_platform.Self_node.NodeID][net_platform.Self_node.NodeID] += 1
 
 	// TODO: Implement sending code
-}
+	// send request to other node
+	platform.SendRequestToken(net_platform, site)
 
-func ReceiveRequest(net_platform *platform.NetworkPlatform, node_id uint64, value uint16) {
-	if site.request_messages[net_platform.Self_node.NodeID][node_id] < value {
-		site.request_messages[net_platform.Self_node.NodeID][node_id] = value
-	}
+	// listen for receiving token
+	go platform.ListenForToken(net_platform)
+	// wait until it has the token
+	for site.HasToken {
 
-	if token.Id == net_platform.Self_node.NodeID && site.request_messages[net_platform.Self_node.NodeID][node_id] == uint16(token.Token_sequence[node_id]+1) {
-		log.Println("Sending token")
-		// TODO Send token to the requesting node
 	}
 }
 
-func ReleaseToken(net_platform *platform.NetworkPlatform) {
+// called by the user
+func (token *Token) ReleaseToken(net_platform *platform.NetworkPlatform) {
+	token.Token_sequence[net_platform.Self_node.NodeID] = uint64(site.Request_messages[net_platform.Self_node.NodeID][net_platform.Self_node.NodeID])
+	rn_i := site.Request_messages[net_platform.Self_node.NodeID]
+	for key, value := range rn_i {
+		if ((token.Token_sequence[key] + 1) == value) && (utility.FindInArray(token.Waiting_queue, key) == -1) {
+			token.Waiting_queue = utility.Enqueue(token.Waiting_queue, key)
+		}
+	}
 
-}
-
-func GetToken() Token {
-	return token
+	id, err := utility.TopQueue(token.Waiting_queue)
+	if err != nil {
+		// handle error
+		return
+	}
+	utility.Dequeue(token.Waiting_queue)
+	idx := net_platform.GetNodeFromId(id)
+	if idx == -1 {
+		// node is not connected anymore
+	}
+	platform.SendToken(net_platform.Connected_nodes[idx].GetAddressString())
 }

@@ -11,6 +11,21 @@ import (
 )
 
 /*
+Site struct for suzuki kasami synchronization
+*/
+type SiteInfo struct {
+	IsExecuting      bool
+	HasToken         bool
+	Request_messages map[uint64]map[uint64]uint64
+}
+
+type Token struct {
+	Id             uint64 // id of the site having the token
+	Waiting_queue  []uint64
+	Token_sequence map[uint64]uint64
+}
+
+/*
 Network Node, and platform struct and methods
 */
 type NetworkNode struct {
@@ -175,4 +190,14 @@ func (net_platform *NetworkPlatform) GetValue(id string) (*lib.Variable, error) 
 	}
 
 	return (*net_platform).symbol_table[id], nil
+}
+
+func (net_platform *NetworkPlatform) GetNodeFromId(id uint64) int16 {
+	for idx, node := range net_platform.Connected_nodes {
+		if node.NodeID == id {
+			return int16(idx)
+		}
+	}
+
+	return -1
 }
