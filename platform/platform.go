@@ -4,7 +4,6 @@ import (
 	"GuthiNetwork/core"
 	"GuthiNetwork/lib"
 	"errors"
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -13,13 +12,30 @@ import (
 /*
 Site struct for suzuki kasami synchronization
 */
-type SiteInfo struct {
+type siteInfo struct {
 	IsExecuting      bool
 	HasToken         bool
-	Request_messages map[uint64]map[uint64]uint64
+	Request_messages map[uint64]uint64
 }
 
-type Token struct {
+func (_site *siteInfo) doesHaveToken() bool {
+	site_mutex.Lock()
+	defer site_mutex.Unlock()
+	return site.HasToken
+}
+
+func (_site *siteInfo) setHasToken(has_token bool) {
+	site_mutex.Lock()
+	defer site_mutex.Unlock()
+	_site.HasToken = has_token
+}
+func (_site *siteInfo) setExecuting(is_executing bool) {
+	site_mutex.Lock()
+	defer site_mutex.Unlock()
+	_site.IsExecuting = is_executing
+}
+
+type tokenInfo struct {
 	Id             uint64 // id of the site having the token
 	Waiting_queue  []uint64
 	Token_sequence map[uint64]uint64
@@ -41,13 +57,14 @@ func (node *NetworkNode) GetAddressString() string {
 
 type NetworkPlatform struct {
 	// Well, there's just a single writer but multiple readers. So RWMutex sounds better choice
-	Self_node          *NetworkNode `json:"self_node"`
-	symbol_table       lib.SymbolTable
-	listener           net.Listener
-	Connected_nodes    []NetworkNode `json:"connected_nodes"` // nodes that are connected right noe
-	Connection_History []string      `json:"history"`         // nodes information that are prevoisly connected
-	Connection_caches  []CacheEntry  `json:"cache_entry"`
-	muxex              sync.Mutex
+	Self_node            *NetworkNode `json:"self_node"`
+	symbol_table         lib.SymbolTable
+	listener             net.Listener
+	Connected_nodes      []NetworkNode `json:"connected_nodes"` // nodes that are connected right noe
+	Connection_History   []string      `json:"history"`         // nodes information that are prevoisly connected
+	Connection_caches    []CacheEntry  `json:"cache_entry"`
+	symbol_table_mutex   sync.Mutex
+	code_execution_mutex sync.Mutex
 }
 
 func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatform, error) {
@@ -56,10 +73,13 @@ func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatf
 	var err error
 	if address == "" {
 		address = "127.0.0.1"
+	} else if address == "f" {
+		address = GetNodeAddress()
 	}
 	platform.Self_node, err = CreateNetworkNode(name, address, port)
 	platform.symbol_table = make(lib.SymbolTable)
-	platform.muxex = sync.Mutex{}
+	platform.symbol_table_mutex = sync.Mutex{}
+	platform.code_execution_mutex = sync.Mutex{}
 
 	if err != nil {
 		return nil, err
@@ -68,6 +88,13 @@ func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatf
 	if err != nil {
 		return platform, err
 	}
+
+	// initialize sem lock variables
+	token.Token_sequence = make(map[uint64]uint64)
+	site_mutex = sync.Mutex{}
+	site.setHasToken(false)
+	site.IsExecuting = false
+	site.Request_messages = make(map[uint64]uint64)
 
 	return platform, nil
 }
@@ -175,21 +202,40 @@ func (net_platform *NetworkPlatform) CreateOrSetValue(id string, data any) error
 	return nil
 }
 
-func (net_platform *NetworkPlatform) SetValue(id string, data any) error {
+func (net_platform *NetworkPlatform) SetValue(id string, _value *lib.Variable) error {
+	net_platform.symbol_table_mutex.Lock()
+	value := net_platform.symbol_table[id]
+	value.SetVariable(_value)
+	net_platform.symbol_table_mutex.Unlock()
+	SendVariableToNodes(value, net_platform)
+	return nil
+}
+
+func (net_platform *NetworkPlatform) setReceivedValue(id string, _value *lib.Variable) {
+	net_platform.symbol_table_mutex.Lock()
+	value := net_platform.symbol_table[id]
+	value.SetVariable(_value)
+	net_platform.symbol_table_mutex.Unlock()
+}
+
+func (net_platform *NetworkPlatform) SetData(id string, data interface{}) error {
+	net_platform.symbol_table_mutex.Lock()
 	value := net_platform.symbol_table[id]
 	value.SetValue(data)
-	net_platform.symbol_table[id] = value
-	log.Println("Sending value: ", value.Data)
-	SendVariableToNodes(net_platform.symbol_table[id], net_platform)
+	net_platform.symbol_table_mutex.Unlock()
+	SendVariableToNodes(value, net_platform)
 	return nil
 }
 
 func (net_platform *NetworkPlatform) GetValue(id string) (*lib.Variable, error) {
-	if _, exists := net_platform.symbol_table[id]; !exists {
+	net_platform.symbol_table_mutex.Lock()
+	defer net_platform.symbol_table_mutex.Unlock()
+	value, exists := net_platform.symbol_table[id]
+	if !exists {
 		return nil, errors.New("Identifier not found")
 	}
 
-	return (*net_platform).symbol_table[id], nil
+	return value, nil
 }
 
 func (net_platform *NetworkPlatform) GetNodeFromId(id uint64) int16 {

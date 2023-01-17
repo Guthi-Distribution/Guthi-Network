@@ -14,11 +14,10 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
-	"time"
 )
 
 const (
-	COMMAND_LENGTH = 16
+	COMMAND_LENGTH = 24
 )
 
 func CreateNetworkNode(name string, address string, port int) (*NetworkNode, error) {
@@ -106,7 +105,7 @@ func HandleNodeResponse(request []byte, net_platform *NetworkPlatform) {
 	net_platform.Connected_nodes = append(net_platform.Connected_nodes, payload.Nodes...)
 
 	if len(payload.Nodes) == 0 {
-		log.Printf("Nodes received length is zero")
+		fmt.Printf("Nodes received length is zero")
 		return
 	}
 	entry := CreateCacheEntry(&payload.Nodes[0], payload.Nodes[0].NodeID)
@@ -119,12 +118,11 @@ Wrapper function for all the handling of various request and response
 func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 	// request, err := io.ReadAll(conn)
 	request, err := ioutil.ReadAll(conn)
-	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 
 	if err != nil {
 		// Close the connection
 		if errors.Is(err, net.ErrClosed) {
-			log.Printf("Connection closed by the peer")
+			fmt.Printf("Connection closed by the peer")
 			return err
 		}
 		return err
@@ -133,7 +131,6 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 	// first 32 bytes to hold the command
 	// TODO: Format the header data
 	command := BytesToCommandString(request[:COMMAND_LENGTH])
-	log.Printf("Command: %s", command)
 
 	switch command {
 	default:
@@ -196,6 +193,14 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 	case "symbol_table":
 		HandleReceiveSymbolTable(request[COMMAND_LENGTH:], net_platform)
 		break
+
+	case "token_request_sk":
+		HandleTokenRequest(request[COMMAND_LENGTH:], net_platform)
+		break
+
+	case "token":
+		HandleReceiveToken(request[COMMAND_LENGTH:], net_platform)
+		break
 	}
 
 	return nil
@@ -222,7 +227,7 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 
 	// The call to listen always blocks
 	// There's no way to get notified when there is a pending connection in Go?
-	log.Printf("Localhost is listening ... \n")
+	// log.Printf("Localhost is listening ... \n")
 	// go RequestInfomation(net_platform)
 	// go CommunicateFileSystem(net_platform)
 	// go Synchronize(net_platform)

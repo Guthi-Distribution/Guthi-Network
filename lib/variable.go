@@ -12,6 +12,10 @@ type SymbolTable map[string]*Variable
 
 /*
 Variable that is communicated in distributed network
+//TODO: Add some metadata so that it can be extended further
+  - one can be the owner of the variable,
+  - if it is the owner then the owner can change once the owner has failed, differnet failure handling can be implemented for this case too
+  - ughhh to much work
 */
 type Variable struct {
 	Id      string // id is basically variable name
@@ -78,6 +82,8 @@ func CreateOrSetValue(id string, data any, symbol_table *SymbolTable) error {
 }
 
 func (value *Variable) SetValue(data any) error {
+	value.mutex.Lock()
+	defer value.mutex.Unlock()
 	if value.IsConst == true {
 		return errors.New("Cannot Write to a constant variable")
 	}
@@ -85,16 +91,14 @@ func (value *Variable) SetValue(data any) error {
 		return errors.New("Type mismatch for previous and new value")
 	}
 
-	value.mutex.Lock()
 	value.Data = data
-	value.mutex.Unlock()
 
 	return nil
 }
 
 func (value *Variable) GetData() interface{} {
-	value.mutex.Lock()
-	defer value.mutex.Unlock()
+	// value.mutex.Lock()
+	// defer value.mutex.Unlock()
 	return value.Data
 }
 

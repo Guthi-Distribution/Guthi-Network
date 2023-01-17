@@ -35,7 +35,7 @@ func sendDataToNode(node *NetworkNode, data []byte, net_platform *NetworkPlatfor
 	conn, err := net.Dial(node.Socket.Network(), node.Socket.String())
 
 	if err != nil {
-		log.Printf("Connection Failed, for node %s\n", node.Name)
+		fmt.Printf("Connection Failed, for node %s\n", node.Name)
 		net_platform.RemoveNode(*node)
 		return
 	}
@@ -43,7 +43,7 @@ func sendDataToNode(node *NetworkNode, data []byte, net_platform *NetworkPlatfor
 
 	_, err = io.Copy(conn, bytes.NewReader(data))
 	if err != nil {
-		log.Printf("Sending data failed, error: %s\n", err.Error())
+		fmt.Printf("Sending data failed, error: %s\n", err.Error())
 	}
 }
 
@@ -51,7 +51,7 @@ func sendDataToAddress(addr string, data []byte, net_platform *NetworkPlatform) 
 	// This is a blocking call make it non blocking
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
-		log.Printf("Connection Failed, for node with address: %s\nError: %s", addr, err)
+		fmt.Printf("Connection Failed, for node with address: %s\nError: %s", addr, err)
 		net_platform.AddToPreviousNodes(addr)
 		net_platform.RemoveNodeWithAddress(addr)
 		//TODO: handle node failure
@@ -92,7 +92,7 @@ func GetNodeAddress() string {
 			return addr_string[:position]
 		}
 	}
-	log.Print("Address not found")
+	fmt.Print("Address not found")
 	// return localhost if other is not found
 	return "127.0.0.1"
 }
