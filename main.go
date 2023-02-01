@@ -56,7 +56,7 @@ func sum(total_sum *lib.Variable, net_platform *platform.NetworkPlatform) {
 		net_platform.SetData(total_sum.Id, prev_sum)
 		fmt.Printf("Updated Value: %d\n", total_sum.GetData().(int))
 		platform.Unlock(net_platform)
-		time.Sleep(time.Millisecond * 500)
+		time.Sleep(time.Millisecond * 50)
 	}
 }
 
@@ -110,9 +110,10 @@ func main() {
 	// send request to the central node
 	if net_platform.Self_node.Socket.Port != 6969 {
 		net_platform.ConnectToNode("127.0.0.1:6969") // one of the way to connect to a particular node, request all the nodes information it has
-	} else {
-		platform.ClaimToken(net_platform)
+
+		net_platform.ClaimToken()
 		log.Print("Claiming token for this node")
+	} else {
 	}
 
 	if *port == 6969 {

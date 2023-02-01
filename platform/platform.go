@@ -207,7 +207,9 @@ func (net_platform *NetworkPlatform) SetValue(id string, _value *lib.Variable) e
 	value := net_platform.symbol_table[id]
 	value.SetVariable(_value)
 	net_platform.symbol_table_mutex.Unlock()
-	SendVariableToNodes(value, net_platform)
+	value.UnLock()
+	// SendVariableToNodes(value, net_platform)
+	sendVariableInvalidation(value, net_platform)
 	return nil
 }
 
@@ -223,16 +225,40 @@ func (net_platform *NetworkPlatform) SetData(id string, data interface{}) error 
 	value := net_platform.symbol_table[id]
 	value.SetValue(data)
 	net_platform.symbol_table_mutex.Unlock()
-	SendVariableToNodes(value, net_platform)
+
+	sendVariableInvalidation(value, net_platform)
 	return nil
 }
 
 func (net_platform *NetworkPlatform) GetValue(id string) (*lib.Variable, error) {
 	net_platform.symbol_table_mutex.Lock()
-	defer net_platform.symbol_table_mutex.Unlock()
 	value, exists := net_platform.symbol_table[id]
+	net_platform.symbol_table_mutex.Unlock()
 	if !exists {
-		return nil, errors.New("Identifier not found")
+		return nil, errors.New("Variable not found")
+	}
+	if !value.IsValid() {
+		sendGetVariable(net_platform, value)
+	}
+
+	// wait until the value is valid
+	for !value.IsValid() {
+
+	}
+
+	return value, nil
+}
+
+/*
+@internal
+Don't care if the validate or not
+*/
+func (net_platform *NetworkPlatform) getValueInvalidated(id string) (*lib.Variable, error) {
+	net_platform.symbol_table_mutex.Lock()
+	value, exists := net_platform.symbol_table[id]
+	net_platform.symbol_table_mutex.Unlock()
+	if !exists {
+		return nil, errors.New("Variable not found")
 	}
 
 	return value, nil

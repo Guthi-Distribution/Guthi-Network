@@ -4,7 +4,6 @@ package shm
 	Semaphore operation:
 		Lock and unlock
 		Semaphore is created by C++ Process and opened by Golang process
-		TODO: May need to do same for shared memory
 */
 
 /*

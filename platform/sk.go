@@ -60,7 +60,7 @@ func Lock(net_platform *NetworkPlatform) {
 	site.IsExecuting = true
 }
 
-func ClaimToken(net_platform *NetworkPlatform) {
+func (net_platform *NetworkPlatform) ClaimToken() {
 	token.Id = net_platform.Self_node.NodeID
 
 	site.setHasToken(true)

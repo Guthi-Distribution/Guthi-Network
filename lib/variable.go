@@ -7,7 +7,15 @@ import (
 	"time"
 )
 
-// type uint8 types
+type State int
+
+const (
+	Modified  State = 0
+	Shared    State = 1
+	Exclusive State = 2
+	Invalid   State = 3
+)
+
 type SymbolTable map[string]*Variable
 
 /*
@@ -24,8 +32,14 @@ type Variable struct {
 
 	Data      interface{}
 	Timestamp time.Time
-	mutex     sync.Mutex // for locally accessing variable by multiple goroutine
+	mutex     sync.Mutex // for locally accessing variable by multiple goroutine @internallly reading and writng
 
+	access_lock sync.Mutex // to prevent race condition for receiveing the value and exclusive region
+
+	is_valid    bool
+	source_node string // ip of the source node, is acessed only when is_vallid is true
+
+	state State
 }
 
 func CreateVariable(id string, data any, symbol_table *SymbolTable) error {
@@ -36,6 +50,7 @@ func CreateVariable(id string, data any, symbol_table *SymbolTable) error {
 	value.Dtype = reflect.TypeOf(data).String()
 	value.Data = data
 	value.IsConst = false
+	value.is_valid = true
 
 	value.Id = id
 	value.Timestamp = time.Now()
@@ -53,6 +68,7 @@ func CreateConstantVariable(id string, data any, symbol_table *SymbolTable) erro
 	value.Dtype = reflect.TypeOf(data).String()
 	value.Data = data
 	value.IsConst = true
+	value.is_valid = true
 
 	value.Id = id
 	value.Timestamp = time.Now()
@@ -73,6 +89,7 @@ func CreateOrSetValue(id string, data any, symbol_table *SymbolTable) error {
 	}
 	value.Dtype = reflect.TypeOf(data).String()
 	value.Data = data
+	value.is_valid = true
 
 	value.IsConst = false
 
@@ -97,8 +114,8 @@ func (value *Variable) SetValue(data any) error {
 }
 
 func (value *Variable) GetData() interface{} {
-	// value.mutex.Lock()
-	// defer value.mutex.Unlock()
+	value.mutex.Lock()
+	defer value.mutex.Unlock()
 	return value.Data
 }
 
@@ -109,4 +126,36 @@ func (value *Variable) SetVariable(variable *Variable) {
 	value.Timestamp = variable.Timestamp
 	value.Dtype = variable.Dtype
 	value.IsConst = variable.IsConst
+}
+
+func (value *Variable) IsValid() bool {
+	return value.is_valid
+}
+
+func (value *Variable) Lock() {
+	value.access_lock.Lock()
+}
+
+func (value *Variable) UnLock() {
+	value.access_lock.Unlock()
+}
+
+func (value *Variable) SetValid(validity bool) {
+	value.is_valid = validity
+}
+
+func (value *Variable) GetSourceNode() string {
+	return value.source_node
+}
+
+func (value *Variable) SetSourceNode(source string) {
+	value.source_node = source
+}
+
+func (value *Variable) GetState() State {
+	return value.state
+}
+
+func (value *Variable) SetState(_state State) {
+	value.state = _state
 }

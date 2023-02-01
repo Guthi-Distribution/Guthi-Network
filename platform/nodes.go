@@ -131,7 +131,7 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 	// first 32 bytes to hold the command
 	// TODO: Format the header data
 	command := BytesToCommandString(request[:COMMAND_LENGTH])
-
+	fmt.Printf("\nCommand: %s\n", command)
 	switch command {
 	default:
 		HandleUnknownCommand()
@@ -187,6 +187,7 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 		break
 
 	case "variable":
+		fmt.Printf("Received Variable\n")
 		HandleReceiveVariable(request[COMMAND_LENGTH:], net_platform)
 		break
 
@@ -200,6 +201,16 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 
 	case "token":
 		HandleReceiveToken(request[COMMAND_LENGTH:], net_platform)
+		break
+
+	case "get_var":
+		fmt.Printf("Received Variable Request\n")
+		handleGetVariableRequest(request[COMMAND_LENGTH:], net_platform)
+		break
+
+	case "validity_info":
+		fmt.Printf("Received Variable Invalidation\n")
+		handleVariableInvalidation(request[COMMAND_LENGTH:], net_platform)
 		break
 	}
 
@@ -222,11 +233,6 @@ func GobEncode(data interface{}) []byte {
 
 // For self
 func ListenForTCPConnection(net_platform *NetworkPlatform) {
-	// create a listener that is used to listen to other connection (somethong like that)
-	// Listen announces on the local network address. @docs
-
-	// The call to listen always blocks
-	// There's no way to get notified when there is a pending connection in Go?
 	// log.Printf("Localhost is listening ... \n")
 	// go RequestInfomation(net_platform)
 	// go CommunicateFileSystem(net_platform)
