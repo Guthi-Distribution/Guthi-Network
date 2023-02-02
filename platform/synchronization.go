@@ -163,6 +163,7 @@ func HandleTokenRequest(payload_byte []byte, net_platform *NetworkPlatform) {
 
 	site.Request_messages[sender_id] = utility.Max(site.Request_messages[sender_id], payload.RequestId)
 
+	// TODO: Add mutex here
 	_, found = token.Token_sequence[sender_id]
 	if !found {
 		token.Token_sequence[sender_id] = 0

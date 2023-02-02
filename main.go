@@ -36,7 +36,7 @@ type Config struct {
 var range_number int // 1 for 100 to 200 and false for 0 to 100
 
 func sum(total_sum *lib.Variable, net_platform *platform.NetworkPlatform) {
-	range_sum := 1000
+	range_sum := 100000
 	minimum := 1 + range_sum*range_number
 	maximum := range_sum + range_sum*range_number
 	for i := minimum; i <= maximum; i++ {
@@ -56,7 +56,7 @@ func sum(total_sum *lib.Variable, net_platform *platform.NetworkPlatform) {
 		net_platform.SetData(total_sum.Id, prev_sum)
 		fmt.Printf("Updated Value: %d\n", total_sum.GetData().(int))
 		platform.Unlock(net_platform)
-		time.Sleep(time.Millisecond * 50)
+		// time.Sleep(time.Millisecond)
 	}
 }
 
