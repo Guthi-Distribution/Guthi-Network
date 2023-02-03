@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"GuthiNetwork/utility"
 	"bytes"
 	"crypto/rand"
 	"encoding/gob"
@@ -119,4 +120,91 @@ func Synchronize(net_platform *NetworkPlatform) {
 			CheckForResponse(net_platform)
 		}
 	}
+}
+
+/*
+Variable synchronization
+*/
+type TokenRequest struct {
+	AddrFrom  string
+	NodeID    uint64
+	RequestId uint64
+}
+
+type TokenSend struct {
+	AddrFrom string
+	Token    tokenInfo
+}
+
+func SendTokenRequest(net_platform *NetworkPlatform) {
+	payload := TokenRequest{
+		net_platform.GetNodeAddress(),
+		net_platform.Self_node.NodeID,
+		site.Request_messages[net_platform.Self_node.NodeID],
+	}
+
+	data := append(CommandStringToBytes("token_request_sk"), GobEncode(payload)...)
+	for _, node := range net_platform.Connected_nodes {
+		sendDataToAddress(node.GetAddressString(), data, net_platform)
+	}
+}
+
+func HandleTokenRequest(payload_byte []byte, net_platform *NetworkPlatform) {
+	// site_mutex.Lock()
+	// defer site_mutex.Unlock()
+	var payload TokenRequest
+	gob.NewDecoder(bytes.NewReader(payload_byte)).Decode(&payload)
+
+	sender_id := payload.NodeID
+	_, found := site.Request_messages[sender_id]
+	if !found {
+		site.Request_messages[sender_id] = 0
+	}
+
+	site.Request_messages[sender_id] = utility.Max(site.Request_messages[sender_id], payload.RequestId)
+
+	// TODO: Add mutex here
+	_, found = token.Token_sequence[sender_id]
+	if !found {
+		token.Token_sequence[sender_id] = 0
+	}
+
+	net_platform.code_execution_mutex.Lock()
+	defer net_platform.code_execution_mutex.Unlock()
+	if site.Request_messages[sender_id] == token.Token_sequence[payload.NodeID]+1 && site.HasToken && !site.IsExecuting {
+		SendToken(net_platform, payload.AddrFrom)
+		return
+	}
+}
+
+// LOG: INTERNAL
+func SendToken(net_platform *NetworkPlatform, address string) {
+	if !site.doesHaveToken() {
+		return
+	}
+	var payload TokenSend
+	payload.AddrFrom = net_platform.GetNodeAddress()
+	payload.Token = token
+	data := append(CommandStringToBytes("token"), GobEncode(payload)...)
+
+	err := sendDataToAddress(address, data, net_platform)
+	if err == nil {
+		site.setHasToken(false)
+	}
+}
+
+func HandleReceiveToken(data []byte, net_platform *NetworkPlatform) {
+	net_platform.symbol_table_mutex.Lock()
+	defer net_platform.symbol_table_mutex.Unlock()
+	var payload TokenSend
+	gob.NewDecoder(bytes.NewReader(data)).Decode(&payload)
+	site.setHasToken(true)
+	token.Id = net_platform.Self_node.NodeID
+	token.Waiting_queue = payload.Token.Waiting_queue
+	sender_node_index := net_platform.get_node_from_string(payload.AddrFrom)
+	if sender_node_index == -1 {
+		fmt.Printf("Node %s has failed", payload.AddrFrom)
+	}
+
+	token.Token_sequence[net_platform.Connected_nodes[sender_node_index].NodeID] = payload.Token.Token_sequence[net_platform.Connected_nodes[sender_node_index].NodeID]
 }
