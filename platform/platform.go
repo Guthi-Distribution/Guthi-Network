@@ -3,11 +3,15 @@ package platform
 import (
 	"GuthiNetwork/core"
 	"GuthiNetwork/lib"
+	"encoding/gob"
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 	"time"
 )
+
+type NodeFailureEventHandler func(*NetworkPlatform, string) // interface so that use can pass it's own structures
 
 /*
 Site struct for suzuki kasami synchronization
@@ -65,6 +69,9 @@ type NetworkPlatform struct {
 	Connection_caches    []CacheEntry  `json:"cache_entry"`
 	symbol_table_mutex   sync.Mutex
 	code_execution_mutex sync.Mutex
+
+	// events
+	node_failure_event_handler NodeFailureEventHandler
 }
 
 func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatform, error) {
@@ -80,6 +87,7 @@ func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatf
 	platform.symbol_table = make(lib.SymbolTable)
 	platform.symbol_table_mutex = sync.Mutex{}
 	platform.code_execution_mutex = sync.Mutex{}
+	platform.node_failure_event_handler = nil
 
 	if err != nil {
 		return nil, err
@@ -97,6 +105,10 @@ func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatf
 	site.Request_messages = make(map[uint64]uint64)
 
 	return platform, nil
+}
+
+func (net_platform *NetworkPlatform) BindNodeFailureEventHandler(handler NodeFailureEventHandler) {
+	net_platform.node_failure_event_handler = handler
 }
 
 func (self *NetworkPlatform) RemoveNode(node NetworkNode) {
@@ -183,6 +195,8 @@ func (self *NetworkPlatform) get_node_from_string(addr string) int {
 }
 
 func (net_platform *NetworkPlatform) CreateVariable(id string, data any) error {
+	net_platform.symbol_table_mutex.Lock()
+	net_platform.symbol_table_mutex.Unlock()
 	err := lib.CreateVariable(id, data, &net_platform.symbol_table)
 	SendVariableToNodes(net_platform.symbol_table[id], net_platform)
 	if err != nil {
@@ -193,6 +207,8 @@ func (net_platform *NetworkPlatform) CreateVariable(id string, data any) error {
 }
 
 func (net_platform *NetworkPlatform) CreateOrSetValue(id string, data any) error {
+	net_platform.symbol_table_mutex.Lock()
+	net_platform.symbol_table_mutex.Unlock()
 	err := lib.CreateOrSetValue(id, data, &net_platform.symbol_table)
 	SendVariableToNodes(net_platform.symbol_table[id], net_platform)
 	if err != nil {
@@ -235,7 +251,7 @@ func (net_platform *NetworkPlatform) GetValue(id string) (*lib.Variable, error) 
 	value, exists := net_platform.symbol_table[id]
 	net_platform.symbol_table_mutex.Unlock()
 	if !exists {
-		return nil, errors.New("Variable not found")
+		return nil, errors.New(fmt.Sprintf("Variable %s not found", id))
 	}
 	if !value.IsValid() {
 		sendGetVariable(net_platform, value)
@@ -255,8 +271,9 @@ Don't care if the validate or not
 */
 func (net_platform *NetworkPlatform) getValueInvalidated(id string) (*lib.Variable, error) {
 	net_platform.symbol_table_mutex.Lock()
+	defer net_platform.symbol_table_mutex.Unlock()
+
 	value, exists := net_platform.symbol_table[id]
-	net_platform.symbol_table_mutex.Unlock()
 	if !exists {
 		return nil, errors.New("Variable not found")
 	}
@@ -272,4 +289,89 @@ func (net_platform *NetworkPlatform) GetNodeFromId(id uint64) int16 {
 	}
 
 	return -1
+}
+
+type Array struct {
+	Size int
+}
+
+func get_array_id(id string, index int) string {
+	return fmt.Sprintf("__%s-%d", id, index)
+}
+
+func (net_platform *NetworkPlatform) CreateArray(id string, size int, data interface{}) error {
+	if size < 0 {
+		return errors.New("Size cannot be less than 0")
+	}
+	var err error
+
+	var arr Array
+	arr.Size = size
+	net_platform.CreateVariable(id, arr)
+	for i := 0; i < size; i++ {
+		err = net_platform.CreateVariable(get_array_id(id, i), data)
+		if err != nil {
+			// TODO: Cleanup all the created array
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (net_platform *NetworkPlatform) SetDataArray(id string, index int, data interface{}) error {
+	value, err := net_platform.GetValue(id)
+	if err != nil {
+		return errors.New("Variable does not exist")
+	}
+
+	array := value.GetData().(Array)
+	if array.Size <= index {
+		err_str := fmt.Sprintf("Index out of range, size: %d, index: %d", array.Size, index)
+		return errors.New(err_str)
+	}
+	value.SetValue(data)
+
+	sendVariableInvalidation(value, net_platform)
+	return nil
+}
+
+func (net_platform *NetworkPlatform) GetValueArray(id string, index int) (*lib.Variable, error) {
+	value, err := net_platform.GetValue(id)
+	if err != nil {
+		return nil, errors.New("Variable does not exist")
+	}
+
+	array := value.GetData().(Array)
+	if array.Size <= index {
+		err_str := fmt.Sprintf("Index out of range, size: %d, index: %d", array.Size, index)
+		return nil, errors.New(err_str)
+	}
+	value, err = net_platform.GetValue(get_array_id(id, index))
+	if err != nil {
+		return nil, err
+	}
+	return value, nil
+}
+
+func (net_platform *NetworkPlatform) GetDataArray(id string, index int) (interface{}, error) {
+	value, err := net_platform.GetValue(id)
+	if err != nil {
+		return nil, errors.New("Variable does not exist")
+	}
+
+	array := value.GetData().(Array)
+	if array.Size <= index {
+		err_str := fmt.Sprintf("Index out of range, size: %d, index: %d", array.Size, index)
+		return nil, errors.New(err_str)
+	}
+	value, err = net_platform.GetValue(get_array_id(id, index))
+	if err != nil {
+		return nil, err
+	}
+	return value.GetData(), nil
+}
+
+func init() {
+	gob.Register(Array{})
 }

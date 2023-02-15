@@ -8,6 +8,7 @@ import (
 )
 
 type State int
+type Type int
 
 const (
 	Modified  State = 0
@@ -38,8 +39,6 @@ type Variable struct {
 
 	is_valid    bool
 	source_node string // ip of the source node, is acessed only when is_vallid is true
-
-	state State
 }
 
 func CreateVariable(id string, data any, symbol_table *SymbolTable) error {
@@ -152,10 +151,10 @@ func (value *Variable) SetSourceNode(source string) {
 	value.source_node = source
 }
 
-func (value *Variable) GetState() State {
-	return value.state
-}
+// func (value *Variable) GetState() State {
+// 	return value.state
+// }
 
-func (value *Variable) SetState(_state State) {
-	value.state = _state
-}
+// func (value *Variable) SetState(_state State) {
+// 	value.state = _state
+// }

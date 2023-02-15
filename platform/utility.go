@@ -54,6 +54,9 @@ func sendDataToAddress(addr string, data []byte, net_platform *NetworkPlatform) 
 		fmt.Printf("Connection Failed, for node with address: %s\nError: %s", addr, err)
 		net_platform.AddToPreviousNodes(addr)
 		net_platform.RemoveNodeWithAddress(addr)
+		if net_platform.node_failure_event_handler != nil {
+			net_platform.node_failure_event_handler(net_platform, addr)
+		}
 		//TODO: handle node failure
 		return err
 	}

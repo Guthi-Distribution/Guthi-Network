@@ -8,6 +8,11 @@ const (
 	NodeDisconnectedEvent
 )
 
+type EventHandler struct {
+	HandlerData     interface{}
+	HandlerFunction interface{}
+}
+
 type Events struct {
 	events []NodeEvents
 }

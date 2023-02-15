@@ -30,6 +30,8 @@ type TableInfo struct {
 }
 
 func SendVariableToNodes(value *lib.Variable, net_platform *NetworkPlatform) error {
+	value.Lock()
+	defer value.UnLock()
 	variable := VariableInfo{
 		net_platform.Self_node.GetAddressString(),
 		value,
@@ -105,6 +107,9 @@ func HandleReceiveVariable(request []byte, net_platform *NetworkPlatform) error 
 	}
 
 	value, err := net_platform.getValueInvalidated(payload.Value.Id)
+	if err != nil {
+		return err
+	}
 	value.Lock()
 	defer value.UnLock()
 	if err != nil {
@@ -121,6 +126,8 @@ func HandleReceiveVariable(request []byte, net_platform *NetworkPlatform) error 
 }
 
 func SendTableToNode(net_platform *NetworkPlatform, address string) error {
+	net_platform.symbol_table_mutex.Lock()
+	defer net_platform.symbol_table_mutex.Unlock()
 	variables := TableInfo{
 		net_platform.Self_node.GetAddressString(),
 		net_platform.symbol_table,

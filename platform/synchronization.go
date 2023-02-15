@@ -91,6 +91,10 @@ func CheckForResponse(net_platform *NetworkPlatform) {
 				delete(pending_connection_time, node)
 				net_platform.AddToPreviousNodes(node)
 				net_platform.RemoveNodeWithAddress(node)
+
+				if net_platform.node_failure_event_handler != nil {
+					net_platform.node_failure_event_handler(net_platform, node)
+				}
 			}
 		}
 	}
