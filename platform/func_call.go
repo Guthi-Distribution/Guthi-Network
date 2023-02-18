@@ -23,6 +23,7 @@ type RemoteFuncReturn struct {
 
 type RemoteFunctionInvoke struct {
 	ArgsCount uint
+	FName     string
 	Values    []interface{}
 }
 
@@ -52,11 +53,16 @@ func GetFunctionSignature(fName string) string {
 	return ""
 }
 
-func interfaceAddNums(a, b int) (int, string) {
+func interfaceAddNums(inputs []interface{}) (int, string) {
+	inputSize := 2
+	if len(inputs) < inputSize {
+		return 0, fmt.Sprintf("minimum of %d inputs required", inputSize)
+	}
+	a, b := inputs[0].(int), inputs[1].(int)
 	return a + b, ""
 }
 
-func CallInterfaceFunction(fName string, inArgs GobEncodedBytes) GobEncodedBytes {
+func CallInterfaceFunction(inArgs GobEncodedBytes) GobEncodedBytes {
 	remoteData := RemoteFunctionInvoke{}
 
 	err := gob.NewDecoder(bytes.NewReader(inArgs)).Decode(&remoteData)
@@ -66,9 +72,9 @@ func CallInterfaceFunction(fName string, inArgs GobEncodedBytes) GobEncodedBytes
 	}
 
 	for k, v := range GlobalFuncStore {
-		if k == fName {
+		if k == remoteData.FName {
 			fType := reflect.TypeOf(v)
-			inArgsCount := fType.NumIn() // in argument is just one, an interface, which the user should cast accordingly
+			inArgsCount := fType.NumIn()
 			outArgsCount := fType.NumOut()
 			fValue := reflect.ValueOf(v)
 
@@ -90,9 +96,7 @@ func CallInterfaceFunction(fName string, inArgs GobEncodedBytes) GobEncodedBytes
 			var in []reflect.Value = make([]reflect.Value, inArgsCount)
 			var out []reflect.Value = make([]reflect.Value, outArgsCount)
 
-			for i := 0; i < inArgsCount; i++ {
-				in[i] = reflect.ValueOf(remoteData.Values[i])
-			}
+			in[0] = reflect.ValueOf(remoteData.Values)
 
 			out = fValue.Call(in)
 
@@ -126,7 +130,7 @@ func callMain() {
 	inArgs := []interface{}{1, 2}
 	argsCount := len(inArgs)
 
-	input := RemoteFunctionInvoke{ArgsCount: uint(argsCount), Values: inArgs}
+	input := RemoteFunctionInvoke{FName: "interfaceAddNums", ArgsCount: uint(argsCount), Values: inArgs}
 
 	var encodedBuffer bytes.Buffer
 	err := gob.NewEncoder(&encodedBuffer).Encode(input)
@@ -136,10 +140,14 @@ func callMain() {
 	}
 
 	var retValue RemoteFuncReturn
-	nbytes := CallInterfaceFunction("interfaceAddNums", encodedBuffer.Bytes())
+	nbytes := CallInterfaceFunction(encodedBuffer.Bytes())
 	err = gob.NewDecoder(bytes.NewReader(nbytes)).Decode(&retValue)
 	if err != nil {
 		panic(err)
+	}
+	if len(retValue.Err) > 0 {
+		fmt.Fprintf(os.Stderr, retValue.Err)
+		return
 	}
 	fmt.Println(retValue.Returns...)
 }
