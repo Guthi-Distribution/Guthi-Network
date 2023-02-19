@@ -43,6 +43,7 @@ type tokenInfo struct {
 	Id             uint64 // id of the site having the token
 	Waiting_queue  []uint64
 	Token_sequence map[uint64]uint64
+	mutex          sync.Mutex
 }
 
 /*
@@ -74,8 +75,14 @@ type NetworkPlatform struct {
 	node_failure_event_handler NodeFailureEventHandler
 }
 
+var network_platform *NetworkPlatform
+
 func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatform, error) {
-	platform := &NetworkPlatform{}
+	// only one struct is possible, need only one value
+	if network_platform != nil {
+		return network_platform, nil
+	}
+	network_platform = &NetworkPlatform{}
 
 	var err error
 	if address == "" {
@@ -83,28 +90,33 @@ func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatf
 	} else if address == "f" {
 		address = GetNodeAddress()
 	}
-	platform.Self_node, err = CreateNetworkNode(name, address, port)
-	platform.symbol_table = make(lib.SymbolTable)
-	platform.symbol_table_mutex = sync.Mutex{}
-	platform.code_execution_mutex = sync.Mutex{}
-	platform.node_failure_event_handler = nil
+	network_platform.Self_node, err = CreateNetworkNode(name, address, port)
+	network_platform.symbol_table = make(lib.SymbolTable)
+	network_platform.symbol_table_mutex = sync.Mutex{}
+	network_platform.code_execution_mutex = sync.Mutex{}
+	network_platform.node_failure_event_handler = nil
 
 	if err != nil {
 		return nil, err
 	}
-	platform.listener, err = net.Listen("tcp", platform.Self_node.Socket.String())
+	network_platform.listener, err = net.Listen("tcp", network_platform.Self_node.Socket.String())
 	if err != nil {
-		return platform, err
+		return network_platform, err
 	}
 
 	// initialize sem lock variables
 	token.Token_sequence = make(map[uint64]uint64)
+	token.mutex = sync.Mutex{}
 	site_mutex = sync.Mutex{}
 	site.setHasToken(false)
 	site.IsExecuting = false
 	site.Request_messages = make(map[uint64]uint64)
 
-	return platform, nil
+	return network_platform, nil
+}
+
+func GetPlatform() *NetworkPlatform {
+	return network_platform
 }
 
 func (net_platform *NetworkPlatform) BindNodeFailureEventHandler(handler NodeFailureEventHandler) {
@@ -263,6 +275,25 @@ func (net_platform *NetworkPlatform) GetValue(id string) (*lib.Variable, error) 
 	}
 
 	return value, nil
+}
+
+func (net_platform *NetworkPlatform) GetData(id string) (interface{}, error) {
+	net_platform.symbol_table_mutex.Lock()
+	value, exists := net_platform.symbol_table[id]
+	net_platform.symbol_table_mutex.Unlock()
+	if !exists {
+		return nil, errors.New(fmt.Sprintf("Variable %s not found", id))
+	}
+	if !value.IsValid() {
+		sendGetVariable(net_platform, value)
+	}
+
+	// wait until the value is valid
+	for !value.IsValid() {
+
+	}
+
+	return value.GetData(), nil
 }
 
 /*

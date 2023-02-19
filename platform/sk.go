@@ -70,6 +70,8 @@ func (net_platform *NetworkPlatform) ClaimToken() {
 func Unlock(net_platform *NetworkPlatform) {
 	defer net_platform.code_execution_mutex.Unlock()
 	site.IsExecuting = false
+	// token.mutex.Lock()
+	// defer token.mutex.Unlock()
 	token.Token_sequence[net_platform.Self_node.NodeID] = uint64(site.Request_messages[net_platform.Self_node.NodeID])
 
 	if !site.doesHaveToken() {

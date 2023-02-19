@@ -133,7 +133,8 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 	// TODO: Format the header data
 	//  TODO: ppok - use bytes to command string and reverse
 	command := BytesToCommandString(request[:COMMAND_LENGTH])
-	fmt.Printf("\nCommand: %s\n", command)
+
+	fmt.Printf("Command: %s\n", command)
 	switch command {
 	default:
 		HandleUnknownCommand()
@@ -189,7 +190,6 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 		break
 
 	case "variable":
-		fmt.Printf("Received Variable\n")
 		HandleReceiveVariable(request[COMMAND_LENGTH:], net_platform)
 		break
 
@@ -206,16 +206,15 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 		break
 
 	case "get_var":
-		fmt.Printf("Received Variable Request\n")
 		handleGetVariableRequest(request[COMMAND_LENGTH:], net_platform)
 		break
 
 	case "validity_info":
-		fmt.Printf("Received Variable Invalidation\n")
 		handleVariableInvalidation(request[COMMAND_LENGTH:], net_platform)
 		break
 
-	case "func_call":
+	case "function_dispatch":
+		handleFunctionDispatch(request[COMMAND_LENGTH:], net_platform)
 		break
 	}
 

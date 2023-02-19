@@ -146,7 +146,7 @@ func SendTokenRequest(net_platform *NetworkPlatform) {
 		net_platform.Self_node.NodeID,
 		site.Request_messages[net_platform.Self_node.NodeID],
 	}
-
+	fmt.Printf("Sending Token Request\n")
 	data := append(CommandStringToBytes("token_request_sk"), GobEncode(payload)...)
 	for _, node := range net_platform.Connected_nodes {
 		sendDataToAddress(node.GetAddressString(), data, net_platform)
@@ -167,7 +167,7 @@ func HandleTokenRequest(payload_byte []byte, net_platform *NetworkPlatform) {
 
 	site.Request_messages[sender_id] = utility.Max(site.Request_messages[sender_id], payload.RequestId)
 
-	// TODO: Add mutex here
+	token.mutex.Lock()
 	_, found = token.Token_sequence[sender_id]
 	if !found {
 		token.Token_sequence[sender_id] = 0
@@ -177,8 +177,8 @@ func HandleTokenRequest(payload_byte []byte, net_platform *NetworkPlatform) {
 	defer net_platform.code_execution_mutex.Unlock()
 	if site.Request_messages[sender_id] == token.Token_sequence[payload.NodeID]+1 && site.HasToken && !site.IsExecuting {
 		SendToken(net_platform, payload.AddrFrom)
-		return
 	}
+	token.mutex.Unlock()
 }
 
 // LOG: INTERNAL
@@ -199,7 +199,7 @@ func SendToken(net_platform *NetworkPlatform, address string) {
 
 func HandleReceiveToken(data []byte, net_platform *NetworkPlatform) {
 	net_platform.symbol_table_mutex.Lock()
-	defer net_platform.symbol_table_mutex.Unlock()
+
 	var payload TokenSend
 	gob.NewDecoder(bytes.NewReader(data)).Decode(&payload)
 	site.setHasToken(true)
@@ -209,6 +209,9 @@ func HandleReceiveToken(data []byte, net_platform *NetworkPlatform) {
 	if sender_node_index == -1 {
 		fmt.Printf("Node %s has failed", payload.AddrFrom)
 	}
+	net_platform.symbol_table_mutex.Unlock()
 
+	token.mutex.Lock()
 	token.Token_sequence[net_platform.Connected_nodes[sender_node_index].NodeID] = payload.Token.Token_sequence[net_platform.Connected_nodes[sender_node_index].NodeID]
+	token.mutex.Unlock()
 }
