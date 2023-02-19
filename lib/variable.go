@@ -17,6 +17,7 @@ const (
 	Invalid   State = 3
 )
 
+// TODO: ppok refer to this symbol table code
 type SymbolTable map[string]*Variable
 
 /*

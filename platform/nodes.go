@@ -114,6 +114,7 @@ func HandleNodeResponse(request []byte, net_platform *NetworkPlatform) {
 
 /*
 Wrapper function for all the handling of various request and response
+first 32 bytes command, rest payload
 */
 func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 	// request, err := io.ReadAll(conn)
@@ -130,6 +131,7 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 
 	// first 32 bytes to hold the command
 	// TODO: Format the header data
+	//  TODO: ppok - use bytes to command string and reverse
 	command := BytesToCommandString(request[:COMMAND_LENGTH])
 	fmt.Printf("\nCommand: %s\n", command)
 	switch command {
@@ -211,6 +213,9 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 	case "validity_info":
 		fmt.Printf("Received Variable Invalidation\n")
 		handleVariableInvalidation(request[COMMAND_LENGTH:], net_platform)
+		break
+
+	case "func_call":
 		break
 	}
 
