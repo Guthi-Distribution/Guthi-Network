@@ -3,32 +3,20 @@ package main
 // There should be one univeral listening port
 
 import (
-	"GuthiNetwork/api"
+	"GuthiNetwork/core"
 	"GuthiNetwork/platform"
-	"encoding/gob"
 	"encoding/json"
-	"flag"
 	"fmt"
-	"image"
-	"image/color"
-	"image/png"
-	"log"
 	"os"
-	"sync"
-	"time"
 
 	"github.com/mitchellh/go-ps"
 )
 
-func wait_loop(elapsed time.Duration) {
-	for {
-		fmt.Printf("\r")
-		for _, r := range "-\\|/" {
-			fmt.Printf("%c", r)
-			time.Sleep(elapsed)
-		}
-	}
-}
+/*
+	TODO:
+		- State Management
+		- Creation of variable in single node
+*/
 
 type Config struct {
 	Name    string `json:"name"`
@@ -91,6 +79,7 @@ type Color struct {
 	B uint16
 }
 
+/*
 func main() {
 	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
 	sum_type := flag.Int("range", 0, "Type of range")
@@ -124,13 +113,13 @@ func main() {
 	sg.Add(1)
 	go platform.ListenForTCPConnection(net_platform) // listen for connection
 
+	curr_time := time.Now().UnixMilli()
 	net_platform.CreateArray("mandelbrot", 1080*720, Color{})
+	fmt.Println(time.Now().UnixMilli() - curr_time)
+	fmt.Scanln("")
 
-	// c := Color{
-	// 	0, 0, 0,
-	// }
 	fmt.Println("hello")
-	render_mandelbrot(net_platform)
+	// render_mandelbrot(net_platform)
 	fmt.Println("Repeat hello")
 
 	im := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{1080, 720}})
@@ -146,4 +135,10 @@ func main() {
 	png.Encode(output, im)
 
 	sg.Wait()
+}
+*/
+
+func main() {
+	core.Initialize()
+	core.CreateFile("hello", "hello_there.txt")
 }

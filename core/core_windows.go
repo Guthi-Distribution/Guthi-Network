@@ -5,7 +5,6 @@ import (
 	"unsafe"
 )
 
-//TODO: Need better name
 /*
 	Initializes the the basic structure needed for core communication
 */

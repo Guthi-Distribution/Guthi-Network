@@ -196,7 +196,7 @@ func (self *NetworkPlatform) get_node_from_string(addr string) int {
 
 func (net_platform *NetworkPlatform) CreateVariable(id string, data any) error {
 	net_platform.symbol_table_mutex.Lock()
-	net_platform.symbol_table_mutex.Unlock()
+	defer net_platform.symbol_table_mutex.Unlock()
 	err := lib.CreateVariable(id, data, &net_platform.symbol_table)
 	SendVariableToNodes(net_platform.symbol_table[id], net_platform)
 	if err != nil {
@@ -208,7 +208,7 @@ func (net_platform *NetworkPlatform) CreateVariable(id string, data any) error {
 
 func (net_platform *NetworkPlatform) CreateOrSetValue(id string, data any) error {
 	net_platform.symbol_table_mutex.Lock()
-	net_platform.symbol_table_mutex.Unlock()
+	defer net_platform.symbol_table_mutex.Unlock()
 	err := lib.CreateOrSetValue(id, data, &net_platform.symbol_table)
 	SendVariableToNodes(net_platform.symbol_table[id], net_platform)
 	if err != nil {
@@ -223,7 +223,7 @@ func (net_platform *NetworkPlatform) SetValue(id string, _value *lib.Variable) e
 	value := net_platform.symbol_table[id]
 	value.SetVariable(_value)
 	net_platform.symbol_table_mutex.Unlock()
-	value.UnLock()
+	defer value.UnLock()
 	// SendVariableToNodes(value, net_platform)
 	sendVariableInvalidation(value, net_platform)
 	return nil
@@ -273,6 +273,7 @@ func (net_platform *NetworkPlatform) getValueInvalidated(id string) (*lib.Variab
 	net_platform.symbol_table_mutex.Lock()
 	defer net_platform.symbol_table_mutex.Unlock()
 
+	//FIXME: CRD
 	value, exists := net_platform.symbol_table[id]
 	if !exists {
 		return nil, errors.New("Variable not found")
@@ -304,12 +305,22 @@ func (net_platform *NetworkPlatform) CreateArray(id string, size int, data inter
 		return errors.New("Size cannot be less than 0")
 	}
 	var err error
+	net_platform.symbol_table_mutex.Lock()
+	_, exists := net_platform.symbol_table[id]
+	// if the array exists, then it is being created by another node
+	// FIXME: Do something else
+	if exists {
+		return nil
+	}
+	net_platform.symbol_table_mutex.Unlock()
 
 	var arr Array
 	arr.Size = size
 	net_platform.CreateVariable(id, arr)
+
+	//TODO: Multithread this piece of shit
 	for i := 0; i < size; i++ {
-		err = net_platform.CreateVariable(get_array_id(id, i), data)
+		err = net_platform.CreateOrSetValue(get_array_id(id, i), data)
 		if err != nil {
 			// TODO: Cleanup all the created array
 			return err
