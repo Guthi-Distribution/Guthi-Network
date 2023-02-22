@@ -3,9 +3,9 @@ package main
 // There should be one univeral listening port
 
 import (
-	"GuthiNetwork/api"
 	"GuthiNetwork/platform"
 	"bufio"
+	"encoding/gob"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -30,21 +30,24 @@ type Config struct {
 
 var range_number int // 1 for 100 to 200 and false for 0 to 100
 
-func render_mandelbrot(net_platform *platform.NetworkPlatform) {
-	diff := (720 / 2)
+func render_mandelbrot(range_number int) {
+	diff := (256 / 2)
 	min := 0 + range_number*diff
 	max := diff + range_number*diff
 	fmt.Println(min, max)
-	for i := 0; i < 1080; i++ {
+	net_platform := platform.GetPlatform()
+	for i := 0; i < 256; i++ {
 		for j := min; j < max; j++ {
-			_data, err := net_platform.GetDataArray("mandelbrot", 720*i+j)
+			_, err := net_platform.GetDataOfArray("mandelbrot", 256*i+j)
 			if err != nil {
+				log.Printf("Index: %d\n", 256*i+j)
 				panic(err)
 			}
-			data := _data.(Color)
-			fmt.Println(data.R)
+			// data := _data.(Color)
 		}
 	}
+
+	fmt.Println("Completed")
 }
 
 func LoadConfiguration(file string) Config {
@@ -104,99 +107,7 @@ type Color struct {
 	B uint16
 }
 
-/*
 func main() {
-	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
-	sum_type := flag.Int("range", 0, "Type of range")
-
-	flag.Parse()
-	range_number = *sum_type
-	fmt.Println(range_number, *sum_type)
-
-	config := LoadConfiguration("config.json")
-	net_platform, err := platform.CreateNetworkPlatform(config.Name, config.Address, *port)
-
-	fmt.Println(net_platform.Self_node.Socket.IP)
-	if err != nil {
-		log.Fatalf("Platform Creation error: %s", err)
-	}
-	gob.Register(Color{})
-
-	// send request to the central node
-	if net_platform.Self_node.Socket.Port != 6969 {
-		net_platform.ConnectToNode("127.0.0.1:6969") // one of the way to connect to a particular node, request all the nodes information it has
-
-		net_platform.ClaimToken()
-		log.Print("Claiming token for this node")
-	} else {
-	}
-
-	if *port == 6969 {
-		go api.StartServer(net_platform)
-	}
-	var sg sync.WaitGroup
-	sg.Add(1)
-	go platform.ListenForTCPConnection(net_platform) // listen for connection
-
-	curr_time := time.Now().UnixMilli()
-	net_platform.CreateArray("mandelbrot", 1080*720, Color{})
-	fmt.Println(time.Now().UnixMilli() - curr_time)
-	fmt.Scanln("")
-
-	fmt.Println("hello")
-	// render_mandelbrot(net_platform)
-	fmt.Println("Repeat hello")
-
-	im := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{1080, 720}})
-	for i := 0; i < 1080; i++ {
-		for j := 0; j < 720; j++ {
-			im.Set(i, j, color.RGBA{})
-		}
-	}
-	for i := 0; i < 1080; i++ {
-		im.SetRGBA(i, 10, color.RGBA{})
-	}
-	output, _ := os.Create("img.png")
-	png.Encode(output, im)
-
-	sg.Wait()
-}
-*/
-
-func main() {
-	// port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
-	// sum_type := flag.Int("range", 0, "Type of range")
-
-	// flag.Parse()
-	// range_number = *sum_type
-	// fmt.Println(range_number, *sum_type)
-
-	// config := LoadConfiguration("config.json")
-
-	// net_platform, err := platform.CreateNetworkPlatform(config.Name, config.Address, *port)
-	// net_platform.CreateVariable("total_sum", int(0))
-
-	// go platform.ListenForTCPConnection(net_platform) // listen for connection
-	// if err != nil {
-	// 	log.Panic(err)
-	// }
-	// var sg sync.WaitGroup
-	// sg.Add(1)
-	// range_number := 1
-	// if *port == 6969 {
-	// 	net_platform.ClaimToken()
-	// 	range_number = 0
-	// } else {
-	// 	net_platform.ConnectToNode("127.0.0.1:6969")
-	// }
-	// // core.Initialize()
-	// // core.CreateFile("hello_there.txt", "hello_there")
-
-	// net_platform.RegisterFunction(sum)
-	// fmt.Printf("Range number: %d\n", range_number)
-	// platform.CallFunction(platform.GetFunctionName(sum), range_number, "")
-	// sg.Wait()
-
 	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
 	sum_type := flag.Int("range", 0, "Type of range")
 
@@ -206,48 +117,37 @@ func main() {
 
 	config := LoadConfiguration("configy.json")
 	net_platform, err := platform.CreateNetworkPlatform(config.Name, config.Address, *port)
-
-	fmt.Println(net_platform.Self_node.Socket.IP)
 	if err != nil {
-		log.Fatalf("Platform Creation error: %s", err)
+		panic(err)
 	}
-
-	// send request to the central node
 	if net_platform.Self_node.Socket.Port != 6969 {
 		net_platform.ConnectToNode("127.0.0.1:6969") // one of the way to connect to a particular node, request all the nodes information it has
-		log.Print("Claiming token for this node")
-	} else {
-		net_platform.ClaimToken()
 	}
-
-	if *port == 6969 {
-		go api.StartServer(net_platform)
-	}
+	go platform.ListenForTCPConnection(net_platform)
 	var sg sync.WaitGroup
 	sg.Add(1)
-	go platform.ListenForTCPConnection(net_platform) // listen for connection
+	// net_platform.CreateFile("test", "test_contents")
+	c := Color{}
+	gob.Register(c)
 
-	net_platform.CreateVariable("total_sum", int(0))
-	total_sum, err := net_platform.GetValue("total_sum")
-
-	if !isLaunchedByDebugger() {
-		// fmt.Println("Not Debugging process")
-		// reader := bufio.NewReader(os.Stdin)
-		// reader.ReadString('\n')
-	} else {
-		for len(net_platform.Connected_nodes) == 0 {
-
-		}
-	}
-	net_platform.RegisterFunction(sum)
-	// fmt.Printf("Range number: %d\n", range_number)
+	net_platform.RegisterFunction(render_mandelbrot)
 	if *port == 6969 {
+		curr_time := time.Now().UnixMilli()
+		net_platform.CreateArray("mandelbrot", 256*256, c)
+		fmt.Println(time.Now().UnixMilli() - curr_time)
 		fmt.Println("Not Debugging process")
-		reader := bufio.NewReader(os.Stdin)
-		reader.ReadString('\n')
-		net_platform.CallFunction(platform.GetFunctionName(sum), 0, "")
-		net_platform.CallFunction(platform.GetFunctionName(sum), 1, net_platform.Connected_nodes[0].GetAddressString())
+
+		if !isLaunchedByDebugger() {
+			reader := bufio.NewReader(os.Stdin)
+			reader.ReadString('\n')
+		} else {
+			for len(net_platform.Connected_nodes) == 0 {
+
+			}
+		}
+		net_platform.CallFunction(platform.GetFunctionName(render_mandelbrot), 0, "")
+		net_platform.CallFunction(platform.GetFunctionName(render_mandelbrot), 1, net_platform.Connected_nodes[0].GetAddressString())
 	}
-	fmt.Printf("Total sum: %d\n", total_sum.GetData())
+
 	sg.Wait()
 }

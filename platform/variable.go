@@ -48,21 +48,25 @@ func SendVariableToNodes(value *lib.Variable, net_platform *NetworkPlatform) err
 	return nil
 }
 
-func sendGetVariable(net_platform *NetworkPlatform, value *lib.Variable) {
+func sendGetVariable(net_platform *NetworkPlatform, value_id string, address string) {
 	payload := GetVariable{
 		net_platform.GetNodeAddress(),
-		value.Id,
+		value_id,
 	}
-
+	log.Printf("Sending request of id: %s\n", value_id)
 	data := append(CommandStringToBytes("get_var"), GobEncode(payload)...)
-	sendDataToAddress(value.GetSourceNode(), data, net_platform)
+	sendDataToAddress(address, data, net_platform)
 }
 
 func handleGetVariableRequest(request []byte, net_platform *NetworkPlatform) {
 	var payload GetVariable
 	gob.NewDecoder(bytes.NewReader(request)).Decode(&payload)
 
-	value, _ := net_platform.getValueInvalidated(payload.Id)
+	value, err := net_platform.getValueInvalidated(payload.Id)
+	if err != nil {
+		log.Printf("Id: %s does not exists\n", payload.Id)
+		return
+	}
 	variable := VariableInfo{
 		net_platform.Self_node.GetAddressString(),
 		value,
@@ -133,7 +137,7 @@ func SendTableToNode(net_platform *NetworkPlatform, address string) error {
 		net_platform.symbol_table,
 	}
 	data := GobEncode(variables)
-	return sendDataToAddress(address, append(CommandStringToBytes("symbol_table"), GobEncode(data)...), net_platform)
+	return sendDataToAddress(address, append(CommandStringToBytes("symbol_table"), data...), net_platform)
 }
 
 func HandleReceiveSymbolTable(request []byte, net_platform *NetworkPlatform) error {
@@ -142,6 +146,7 @@ func HandleReceiveSymbolTable(request []byte, net_platform *NetworkPlatform) err
 	if err != nil {
 		return errors.New(fmt.Sprintf("Gob decoder error:%s", err))
 	}
+	fmt.Printf("INFO: Table Size: %d", len(payload.Table))
 
 	for id, value := range payload.Table {
 		if _, found := net_platform.symbol_table[id]; found {
@@ -150,9 +155,8 @@ func HandleReceiveSymbolTable(request []byte, net_platform *NetworkPlatform) err
 				continue
 			}
 		}
-		log.Println("Setiing validity as false")
-		value.SetValid(false)
-		value.SetSourceNode(payload.AddrFrom)
+		value.SetValid(true)
+		// value.SetSourceNode(payload.AddrFrom)
 		net_platform.symbol_table[id] = value
 	}
 

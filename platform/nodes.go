@@ -134,13 +134,15 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 	//  TODO: ppok - use bytes to command string and reverse
 	command := BytesToCommandString(request[:COMMAND_LENGTH])
 
-	fmt.Printf("Command: %s\n", command)
+	// TODO: Log this into file
+	// fmt.Printf("Command: %s\n", command)
 	switch command {
 	default:
 		HandleUnknownCommand()
 		break
 
 	case "getnodes":
+		fmt.Printf("Command: %s\n", command)
 		HandleGetNodes(request[COMMAND_LENGTH:], net_platform)
 		break
 
@@ -158,10 +160,12 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 		break
 
 	case "connect":
+		fmt.Printf("Command: %s\n", command)
 		HandleConnectionInitiation(request[COMMAND_LENGTH:], net_platform)
 		break
 
 	case "connection_reply":
+		fmt.Printf("Command: %s\n", command)
 		HandleConnectionReply(request[COMMAND_LENGTH:], net_platform)
 		break
 
@@ -194,6 +198,7 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 		break
 
 	case "symbol_table":
+		fmt.Printf("Command: %s\n", command)
 		HandleReceiveSymbolTable(request[COMMAND_LENGTH:], net_platform)
 		break
 
@@ -214,6 +219,7 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 		break
 
 	case "function_dispatch":
+		fmt.Printf("Command: %s\n", command)
 		handleFunctionDispatch(request[COMMAND_LENGTH:], net_platform)
 		break
 	}

@@ -47,6 +47,9 @@ func (net_platform *NetworkPlatform) RegisterFunction(f interface{}) error {
 	key := GetFunctionName(f)
 	globalFuncStore[key] = f
 
+	// TODO: Implement this
+	// sendFunctionKeyToNodes(key, net_platform)
+
 	return nil
 }
 
@@ -145,19 +148,20 @@ func (net_platform *NetworkPlatform) CallFunction(func_name string, args interfa
 		panic(err)
 	}
 
-	var retValue RemoteFuncReturn
-	nbytes := CallInterfaceFunction(encodedBuffer.Bytes())
-	if nbytes != nil {
-		err = gob.NewDecoder(bytes.NewReader(nbytes)).Decode(&retValue)
-		if err != nil {
-			panic(err)
-		}
-		if len(retValue.Err) > 0 {
-			fmt.Fprintf(os.Stderr, retValue.Err)
-			return
-		}
-	}
-	fmt.Println(retValue.Returns...)
+	// TODO: Fix this execution issue
+	// var retValue RemoteFuncReturn
+	go CallInterfaceFunction(encodedBuffer.Bytes())
+	// if nbytes != nil {
+	// 	err = gob.NewDecoder(bytes.NewReader(nbytes)).Decode(&retValue)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	if len(retValue.Err) > 0 {
+	// 		fmt.Fprintf(os.Stderr, retValue.Err)
+	// 		return
+	// 	}
+	// }
+	// fmt.Println(retValue.Returns...)
 }
 
 type functionDispatchInfo struct {

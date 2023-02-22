@@ -90,6 +90,7 @@ func CreateOrSetValue(id string, data any, symbol_table *SymbolTable) error {
 	value.Dtype = reflect.TypeOf(data).String()
 	value.Data = data
 	value.is_valid = true
+	value.Id = id
 
 	value.IsConst = false
 

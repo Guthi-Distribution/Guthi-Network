@@ -266,7 +266,7 @@ func (net_platform *NetworkPlatform) GetValue(id string) (*lib.Variable, error) 
 		return nil, errors.New(fmt.Sprintf("Variable %s not found", id))
 	}
 	if !value.IsValid() {
-		sendGetVariable(net_platform, value)
+		sendGetVariable(net_platform, id, value.GetSourceNode())
 	}
 
 	// wait until the value is valid
@@ -278,21 +278,10 @@ func (net_platform *NetworkPlatform) GetValue(id string) (*lib.Variable, error) 
 }
 
 func (net_platform *NetworkPlatform) GetData(id string) (interface{}, error) {
-	net_platform.symbol_table_mutex.Lock()
-	value, exists := net_platform.symbol_table[id]
-	net_platform.symbol_table_mutex.Unlock()
-	if !exists {
-		return nil, errors.New(fmt.Sprintf("Variable %s not found", id))
+	value, err := net_platform.GetValue(id)
+	if err != nil {
+		return nil, err
 	}
-	if !value.IsValid() {
-		sendGetVariable(net_platform, value)
-	}
-
-	// wait until the value is valid
-	for !value.IsValid() {
-
-	}
-
 	return value.GetData(), nil
 }
 
@@ -328,7 +317,8 @@ type Array struct {
 }
 
 func get_array_id(id string, index int) string {
-	return fmt.Sprintf("__%s-%d", id, index)
+	index_str := fmt.Sprintf("__%s__%d", id, index)
+	return index_str
 }
 
 func (net_platform *NetworkPlatform) CreateArray(id string, size int, data interface{}) error {
@@ -349,11 +339,25 @@ func (net_platform *NetworkPlatform) CreateArray(id string, size int, data inter
 	arr.Size = size
 	net_platform.CreateVariable(id, arr)
 
+	chl := make(chan error)
 	//TODO: Multithread this piece of shit
 	for i := 0; i < size; i++ {
-		err = net_platform.CreateOrSetValue(get_array_id(id, i), data)
+		go func(id string, index int) {
+			err = net_platform.CreateOrSetValue(get_array_id(id, index), data)
+			if err != nil {
+				// TODO: Cleanup all the created array
+				// return err
+				chl <- err
+				return
+			}
+
+			chl <- err
+		}(id, i)
+	}
+
+	for i := 0; i < size; i++ {
+		err := <-chl
 		if err != nil {
-			// TODO: Cleanup all the created array
 			return err
 		}
 	}
@@ -396,7 +400,7 @@ func (net_platform *NetworkPlatform) GetValueArray(id string, index int) (*lib.V
 	return value, nil
 }
 
-func (net_platform *NetworkPlatform) GetDataArray(id string, index int) (interface{}, error) {
+func (net_platform *NetworkPlatform) GetDataOfArray(id string, index int) (interface{}, error) {
 	value, err := net_platform.GetValue(id)
 	if err != nil {
 		return nil, errors.New("Variable does not exist")
@@ -416,4 +420,21 @@ func (net_platform *NetworkPlatform) GetDataArray(id string, index int) (interfa
 
 func init() {
 	gob.Register(Array{})
+}
+
+/*
+---------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
+---------------------------------------------FILE HANDLING-----------------------------------------------
+---------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
+*/
+func (net_platform *NetworkPlatform) CreateFile(file_name string, contents string) {
+	core.CreateFile(file_name, contents)
+	//TODO: Implement sending of file
+	// sendFileToNodes(file_name, net_platform)
 }
