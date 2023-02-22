@@ -365,17 +365,17 @@ func (net_platform *NetworkPlatform) CreateArray(id string, size int, data inter
 	return nil
 }
 
-func (net_platform *NetworkPlatform) SetDataArray(id string, index int, data interface{}) error {
+func (net_platform *NetworkPlatform) SetDataOfArray(id string, index int, data interface{}) error {
 	value, err := net_platform.GetValue(id)
 	if err != nil {
 		return errors.New("Variable does not exist")
 	}
-
 	array := value.GetData().(Array)
 	if array.Size <= index {
 		err_str := fmt.Sprintf("Index out of range, size: %d, index: %d", array.Size, index)
 		return errors.New(err_str)
 	}
+	value, _ = net_platform.GetValue(get_array_id(id, index))
 	value.SetValue(data)
 
 	sendVariableInvalidation(value, net_platform)

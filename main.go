@@ -9,7 +9,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"log"
+	"math"
 	"os"
 	"sync"
 	"time"
@@ -28,23 +32,68 @@ type Config struct {
 	Address string `json:"address"`
 }
 
+type Complex struct {
+	real, imag float64
+}
+
+func (c *Complex) absolute() float64 {
+	return c.real*c.real + c.imag*c.imag
+}
+
+func add(c1 Complex, c2 Complex) Complex {
+	return Complex{c1.real + c2.real, c1.imag + c2.imag}
+}
+
+func multiply(c1 Complex, c2 Complex) Complex {
+	return Complex{c1.real*c2.real - c1.imag*c2.imag, c1.real*c2.imag + c1.imag*c2.real}
+}
+
 var range_number int // 1 for 100 to 200 and false for 0 to 100
+
+func does_diverge(c *Complex, radius float64, max_iter int) int {
+	iter := 0
+	z := Complex{0, 0}
+	for c.absolute() < radius && iter < max_iter {
+		z = add(multiply(z, z), *c)
+		iter += 1
+	}
+	*c = z
+
+	return iter
+}
 
 func render_mandelbrot(range_number int) {
 	diff := (256 / 2)
 	min := 0 + range_number*diff
 	max := diff + range_number*diff
+
+	width := 256.0
+	height := 256.0
+	max_iter := 100
+	radius := 4.0
+
 	fmt.Println(min, max)
+	start := Complex{-2.5, -2}
+	end := Complex{1, 2}
 	net_platform := platform.GetPlatform()
-	for i := 0; i < 256; i++ {
-		for j := min; j < max; j++ {
-			_, err := net_platform.GetDataOfArray("mandelbrot", 256*i+j)
+	for x := 0; x < 256; x++ {
+		real := start.real + (float64(x)/width)*(end.real-start.real)
+		for y := min; y < max; y++ {
+			imag := start.imag + (float64(y)/height)*(end.imag-start.imag)
+			z := Complex{real, imag}
+			n_iter := does_diverge(&z, radius, max_iter)
+			color_element := uint16(((n_iter - int(math.Log2(z.absolute()/radius))) / max_iter) * 255)
+
+			color := Color{color_element}
+			// _, err := net_platform.GetDataOfArray("mandelbrot", 256*x+y)
+			err := net_platform.SetDataOfArray("mandelbrot", 256*x+y, color)
 			if err != nil {
-				log.Printf("Index: %d\n", 256*i+j)
+				log.Printf("Index: %d\n", 256*x+y)
 				panic(err)
 			}
 			// data := _data.(Color)
 		}
+		fmt.Printf("Index completed: %d\n", x)
 	}
 
 	fmt.Println("Completed")
@@ -103,8 +152,8 @@ func isLaunchedByDebugger() bool {
 
 type Color struct {
 	R uint16
-	G uint16
-	B uint16
+	// G uint16
+	// B uint16
 }
 
 func main() {
@@ -126,7 +175,6 @@ func main() {
 	go platform.ListenForTCPConnection(net_platform)
 	var sg sync.WaitGroup
 	sg.Add(1)
-	// net_platform.CreateFile("test", "test_contents")
 	c := Color{}
 	gob.Register(c)
 
@@ -148,6 +196,27 @@ func main() {
 		net_platform.CallFunction(platform.GetFunctionName(render_mandelbrot), 0, "")
 		net_platform.CallFunction(platform.GetFunctionName(render_mandelbrot), 1, net_platform.Connected_nodes[0].GetAddressString())
 	}
+
+	reader := bufio.NewReader(os.Stdin)
+	reader.ReadString('\n')
+
+	im := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{256, 256}})
+	for i := 0; i < 256; i++ {
+		for j := 0; j < 256; j++ {
+			c, err := net_platform.GetDataOfArray("mandelbrot", 256*i+j)
+			if err != nil {
+
+			}
+			r := c.(Color).R
+			g := c.(Color).R
+			b := c.(Color).R
+			im.Set(i, j, color.RGBA{uint8(r), uint8(g), uint8(b), 255})
+		}
+		fmt.Printf("Index completed: %d\n", i)
+	}
+
+	output, _ := os.Create("img.png")
+	png.Encode(output, im)
 
 	sg.Wait()
 }

@@ -53,7 +53,7 @@ func sendGetVariable(net_platform *NetworkPlatform, value_id string, address str
 		net_platform.GetNodeAddress(),
 		value_id,
 	}
-	log.Printf("Sending request of id: %s\n", value_id)
+	// log.Printf("Sending request of id: %s\n", value_id)
 	data := append(CommandStringToBytes("get_var"), GobEncode(payload)...)
 	sendDataToAddress(address, data, net_platform)
 }
@@ -122,7 +122,7 @@ func HandleReceiveVariable(request []byte, net_platform *NetworkPlatform) error 
 			log.Panic("Type mismatch for received variable")
 		}
 	}
-	fmt.Println("Received value: ", payload.Value.Data)
+	// fmt.Println("Received value: ", payload.Value.Data)
 	net_platform.setReceivedValue(payload.Value.Id, payload.Value)
 	value.SetValid(true)
 	value.SetSourceNode("")
@@ -187,7 +187,7 @@ func handleVariableInvalidation(request []byte, net_platform *NetworkPlatform) {
 	gob.NewDecoder(bytes.NewReader(request)).Decode(&payload)
 
 	value, _ := net_platform.getValueInvalidated(payload.VarId)
-	fmt.Println("Received Value invalidation: ", payload.VarId)
+	// fmt.Println("Received Value invalidation: ", payload.VarId)
 	value.SetValid(false)
 	value.SetSourceNode(payload.AddrFrom)
 }
