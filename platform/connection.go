@@ -32,6 +32,7 @@ func (net_platform *NetworkPlatform) ConnectToNode(address string) error {
 		AddrFrom:  net_platform.Self_node.Socket.String(),
 		ConnectId: rand_num.Uint64(),
 	}
+	fmt.Printf("%s\n", payload.AddrFrom)
 	// connect to the network
 	data := GobEncode(payload)
 	data = append(CommandStringToBytes("connect"), data...)

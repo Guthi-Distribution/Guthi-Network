@@ -4,6 +4,7 @@ package main
 
 import (
 	"GuthiNetwork/platform"
+	"GuthiNetwork/utility"
 	"bufio"
 	"encoding/gob"
 	"encoding/json"
@@ -21,12 +22,14 @@ import (
 	"github.com/mitchellh/go-ps"
 )
 
-/*
-	TODO:
-		- State Management
-		- Creation of variable in single node
-*/
+var width int
+var height int
 
+/*
+TODO:
+  - State Management
+  - Creation of variable in single node
+*/
 type Config struct {
 	Name    string `json:"name"`
 	Address string `json:"address"`
@@ -37,7 +40,7 @@ type Complex struct {
 }
 
 func (c *Complex) absolute() float64 {
-	return c.real*c.real + c.imag*c.imag
+	return math.Sqrt(c.real*c.real + c.imag*c.imag)
 }
 
 func add(c1 Complex, c2 Complex) Complex {
@@ -53,9 +56,12 @@ var range_number int // 1 for 100 to 200 and false for 0 to 100
 func does_diverge(c *Complex, radius float64, max_iter int) int {
 	iter := 0
 	z := Complex{0, 0}
-	for c.absolute() < radius && iter < max_iter {
+	for iter < max_iter {
 		z = add(multiply(z, z), *c)
 		iter += 1
+		if z.absolute() > radius {
+			break
+		}
 	}
 	*c = z
 
@@ -63,38 +69,37 @@ func does_diverge(c *Complex, radius float64, max_iter int) int {
 }
 
 func render_mandelbrot(range_number int) {
-	diff := (256 / 2)
+	diff := (width / 2)
 	min := 0 + range_number*diff
 	max := diff + range_number*diff
-
-	width := 256.0
-	height := 256.0
 	max_iter := 100
-	radius := 4.0
+	radius := 3.0
 
 	fmt.Println(min, max)
 	start := Complex{-2.5, -2}
 	end := Complex{1, 2}
 	net_platform := platform.GetPlatform()
-	for x := 0; x < 256; x++ {
-		real := start.real + (float64(x)/width)*(end.real-start.real)
+	for x := 0; x < width; x++ {
+		real := start.real + (float64(x)/float64(width))*(end.real-start.real)
 		for y := min; y < max; y++ {
-			imag := start.imag + (float64(y)/height)*(end.imag-start.imag)
+			imag := start.imag + (float64(y)/float64(height))*(end.imag-start.imag)
 			z := Complex{real, imag}
 			n_iter := does_diverge(&z, radius, max_iter)
-			color_element := uint16(((n_iter - int(math.Log2(z.absolute()/radius))) / max_iter) * 255)
 
-			color := Color{color_element}
-			// _, err := net_platform.GetDataOfArray("mandelbrot", 256*x+y)
-			err := net_platform.SetDataOfArray("mandelbrot", 256*x+y, color)
+			color_element := uint16(math.Min((float64(n_iter)-math.Log2(z.absolute()/float64(radius)))/float64(max_iter)*255, 255.0))
+			color_element = uint16(n_iter * 255 / max_iter)
+			color := Color{color_element, utility.Min(255, color_element*2), utility.Min(255, color_element*3)}
+			// _, err := net_platform.GetDataOfArray("mandelbrot", width*x+y)
+			err := net_platform.SetDataOfArray("mandelbrot", width*x+y, color)
 			if err != nil {
-				log.Printf("Index: %d\n", 256*x+y)
+				log.Printf("Index: %d\n", width*x+y)
 				panic(err)
 			}
 			// data := _data.(Color)
 		}
 		fmt.Printf("Index completed: %d\n", x)
 	}
+	platform.Send_array_to_nodes("mandelbrot", net_platform)
 
 	fmt.Println("Completed")
 }
@@ -152,11 +157,13 @@ func isLaunchedByDebugger() bool {
 
 type Color struct {
 	R uint16
-	// G uint16
-	// B uint16
+	G uint16
+	B uint16
 }
 
 func main() {
+	width = 1024
+	height = 1024
 	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
 	sum_type := flag.Int("range", 0, "Type of range")
 
@@ -173,6 +180,7 @@ func main() {
 		net_platform.ConnectToNode("127.0.0.1:6969") // one of the way to connect to a particular node, request all the nodes information it has
 	}
 	go platform.ListenForTCPConnection(net_platform)
+
 	var sg sync.WaitGroup
 	sg.Add(1)
 	c := Color{}
@@ -181,7 +189,7 @@ func main() {
 	net_platform.RegisterFunction(render_mandelbrot)
 	if *port == 6969 {
 		curr_time := time.Now().UnixMilli()
-		net_platform.CreateArray("mandelbrot", 256*256, c)
+		net_platform.CreateArray("mandelbrot", width*width, c)
 		fmt.Println(time.Now().UnixMilli() - curr_time)
 		fmt.Println("Not Debugging process")
 
@@ -200,10 +208,10 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 	reader.ReadString('\n')
 
-	im := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{256, 256}})
-	for i := 0; i < 256; i++ {
-		for j := 0; j < 256; j++ {
-			c, err := net_platform.GetDataOfArray("mandelbrot", 256*i+j)
+	im := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{width, width}})
+	for i := 0; i < width; i++ {
+		for j := 0; j < width; j++ {
+			c, err := net_platform.GetDataOfArray("mandelbrot", width*i+j)
 			if err != nil {
 
 			}

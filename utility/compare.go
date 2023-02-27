@@ -12,3 +12,11 @@ func Max[T Ordered](elem_1 T, elem_2 T) T {
 		return elem_2
 	}
 }
+
+func Min[T Ordered](elem_1 T, elem_2 T) T {
+	if elem_1 < elem_2 {
+		return elem_1
+	} else {
+		return elem_2
+	}
+}

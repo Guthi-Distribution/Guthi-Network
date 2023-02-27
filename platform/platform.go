@@ -54,6 +54,7 @@ type NetworkNode struct {
 	Name   string `json:"name"`
 	// TCP Addr is akin to socket. So, its only used when its listening for connection, right?
 	Socket *net.TCPAddr `json:"address"`
+	conn   *net.TCPConn
 }
 
 func (node *NetworkNode) GetAddressString() string {
@@ -68,7 +69,7 @@ type NetworkPlatform struct {
 	Connected_nodes      []NetworkNode `json:"connected_nodes"` // nodes that are connected right noe
 	Connection_History   []string      `json:"history"`         // nodes information that are prevoisly connected
 	Connection_caches    []CacheEntry  `json:"cache_entry"`
-	symbol_table_mutex   sync.Mutex
+	symbol_table_mutex   sync.RWMutex
 	code_execution_mutex sync.Mutex
 
 	// events
@@ -92,7 +93,7 @@ func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatf
 	}
 	network_platform.Self_node, err = CreateNetworkNode(name, address, port)
 	network_platform.symbol_table = make(lib.SymbolTable)
-	network_platform.symbol_table_mutex = sync.Mutex{}
+	network_platform.symbol_table_mutex = sync.RWMutex{}
 	network_platform.code_execution_mutex = sync.Mutex{}
 	network_platform.node_failure_event_handler = nil
 
@@ -231,10 +232,10 @@ func (net_platform *NetworkPlatform) CreateOrSetValue(id string, data any) error
 }
 
 func (net_platform *NetworkPlatform) SetValue(id string, _value *lib.Variable) error {
-	net_platform.symbol_table_mutex.Lock()
+	net_platform.symbol_table_mutex.RLock()
 	value := net_platform.symbol_table[id]
 	value.SetVariable(_value)
-	net_platform.symbol_table_mutex.Unlock()
+	net_platform.symbol_table_mutex.RUnlock()
 	defer value.UnLock()
 	// SendVariableToNodes(value, net_platform)
 	sendVariableInvalidation(value, net_platform)
@@ -242,26 +243,28 @@ func (net_platform *NetworkPlatform) SetValue(id string, _value *lib.Variable) e
 }
 
 func (net_platform *NetworkPlatform) setReceivedValue(id string, _value *lib.Variable) {
-	net_platform.symbol_table_mutex.Lock()
+	net_platform.symbol_table_mutex.RLock()
 	value := net_platform.symbol_table[id]
 	value.SetVariable(_value)
-	net_platform.symbol_table_mutex.Unlock()
+	value.SetValid(true)
+	value.SetSourceNode("")
+	net_platform.symbol_table_mutex.RUnlock()
 }
 
 func (net_platform *NetworkPlatform) SetData(id string, data interface{}) error {
-	net_platform.symbol_table_mutex.Lock()
+	net_platform.symbol_table_mutex.RLock()
 	value := net_platform.symbol_table[id]
 	value.SetValue(data)
-	net_platform.symbol_table_mutex.Unlock()
+	net_platform.symbol_table_mutex.RUnlock()
 
 	sendVariableInvalidation(value, net_platform)
 	return nil
 }
 
 func (net_platform *NetworkPlatform) GetValue(id string) (*lib.Variable, error) {
-	net_platform.symbol_table_mutex.Lock()
+	net_platform.symbol_table_mutex.RLock()
 	value, exists := net_platform.symbol_table[id]
-	net_platform.symbol_table_mutex.Unlock()
+	net_platform.symbol_table_mutex.RUnlock()
 	if !exists {
 		return nil, errors.New(fmt.Sprintf("Variable %s not found", id))
 	}
@@ -290,8 +293,8 @@ func (net_platform *NetworkPlatform) GetData(id string) (interface{}, error) {
 Don't care if the validate or not
 */
 func (net_platform *NetworkPlatform) getValueInvalidated(id string) (*lib.Variable, error) {
-	net_platform.symbol_table_mutex.Lock()
-	defer net_platform.symbol_table_mutex.Unlock()
+	net_platform.symbol_table_mutex.RLock()
+	defer net_platform.symbol_table_mutex.RUnlock()
 
 	//FIXME: CRD
 	value, exists := net_platform.symbol_table[id]
@@ -321,46 +324,44 @@ func get_array_id(id string, index int) string {
 	return index_str
 }
 
+func (net_platform *NetworkPlatform) create_variable_of_array(id string, data any) error {
+	net_platform.symbol_table_mutex.Lock()
+	defer net_platform.symbol_table_mutex.Unlock()
+	err := lib.CreateOrSetValue(id, data, &net_platform.symbol_table)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (net_platform *NetworkPlatform) CreateArray(id string, size int, data interface{}) error {
 	if size < 0 {
 		return errors.New("Size cannot be less than 0")
 	}
 	var err error
-	net_platform.symbol_table_mutex.Lock()
+	net_platform.symbol_table_mutex.RLock()
 	_, exists := net_platform.symbol_table[id]
 	// if the array exists, then it is being created by another node
 	// FIXME: Do something else
 	if exists {
 		return nil
 	}
-	net_platform.symbol_table_mutex.Unlock()
+	net_platform.symbol_table_mutex.RUnlock()
 
 	var arr Array
 	arr.Size = size
-	net_platform.CreateVariable(id, arr)
+	net_platform.create_variable_of_array(id, arr)
 
-	chl := make(chan error)
 	//TODO: Multithread this piece of shit
 	for i := 0; i < size; i++ {
-		go func(id string, index int) {
-			err = net_platform.CreateOrSetValue(get_array_id(id, index), data)
-			if err != nil {
-				// TODO: Cleanup all the created array
-				// return err
-				chl <- err
-				return
-			}
-
-			chl <- err
-		}(id, i)
-	}
-
-	for i := 0; i < size; i++ {
-		err := <-chl
+		err = net_platform.create_variable_of_array(get_array_id(id, i), data)
 		if err != nil {
 			return err
 		}
 	}
+
+	Send_array_to_nodes(id, net_platform)
 
 	return nil
 }
@@ -420,6 +421,7 @@ func (net_platform *NetworkPlatform) GetDataOfArray(id string, index int) (inter
 
 func init() {
 	gob.Register(Array{})
+	gob.Register(VariableInfo{})
 }
 
 /*

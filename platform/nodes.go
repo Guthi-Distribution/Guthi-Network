@@ -36,6 +36,7 @@ func CreateNetworkNode(name string, address string, port int) (*NetworkNode, err
 		return nil, err
 	}
 	networkNode.NodeID = crc64.Checksum([]byte(id), table)
+	networkNode.conn = nil
 	return networkNode, nil
 }
 
@@ -197,6 +198,10 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 		HandleReceiveVariable(request[COMMAND_LENGTH:], net_platform)
 		break
 
+	case "array":
+		HandleReceiveArray(request[COMMAND_LENGTH:], net_platform)
+		break
+
 	case "symbol_table":
 		fmt.Printf("Command: %s\n", command)
 		HandleReceiveSymbolTable(request[COMMAND_LENGTH:], net_platform)
@@ -229,7 +234,7 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 
 // Gob Encode
 // Details: https://pkg.go.dev/encoding/gob
-func GobEncode(data interface{}) []byte {
+func GobEncode(data any) []byte {
 	var buff bytes.Buffer
 
 	// the encoded data is stored in buff and the data to be encoded is `data`
@@ -252,12 +257,14 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 	// go RequestInfomation(net_platform)
 	// go CommunicateFileSystem(net_platform)
 	// go Synchronize(net_platform)
-	for {
-		conn, err := net_platform.listener.Accept()
-		if err != nil {
-			fmt.Printf("Failed to Accept the incoming connection.  Error: %s\n", err.Error())
-			break
+	go func() {
+		for {
+			conn, err := net_platform.listener.Accept()
+			if err != nil {
+				fmt.Printf("Failed to Accept the incoming connection.  Error: %s\n", err.Error())
+				break
+			}
+			go HandleTCPConnection(conn, net_platform)
 		}
-		go HandleTCPConnection(conn, net_platform)
-	}
+	}()
 }
