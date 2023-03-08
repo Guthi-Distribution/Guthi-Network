@@ -11,7 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/crc64"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 )
@@ -36,6 +36,7 @@ func CreateNetworkNode(name string, address string, port int) (*NetworkNode, err
 		return nil, err
 	}
 	networkNode.NodeID = crc64.Checksum([]byte(id), table)
+	networkNode.conn = nil
 	return networkNode, nil
 }
 
@@ -114,30 +115,24 @@ func HandleNodeResponse(request []byte, net_platform *NetworkPlatform) {
 
 /*
 Wrapper function for all the handling of various request and response
+first 32 bytes command, rest payload
 */
-func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
-	// request, err := io.ReadAll(conn)
-	request, err := ioutil.ReadAll(conn)
-
-	if err != nil {
-		// Close the connection
-		if errors.Is(err, net.ErrClosed) {
-			fmt.Printf("Connection closed by the peer")
-			return err
-		}
-		return err
-	}
+func HandleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 
 	// first 32 bytes to hold the command
 	// TODO: Format the header data
+	//  TODO: ppok - use bytes to command string and reverse
 	command := BytesToCommandString(request[:COMMAND_LENGTH])
-	fmt.Printf("\nCommand: %s\n", command)
+
+	// TODO: Log this into file
+	// log.Printf("Command: %s\n", command)
 	switch command {
 	default:
 		HandleUnknownCommand()
 		break
 
 	case "getnodes":
+		fmt.Printf("Command: %s\n", command)
 		HandleGetNodes(request[COMMAND_LENGTH:], net_platform)
 		break
 
@@ -155,10 +150,12 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 		break
 
 	case "connect":
+		fmt.Printf("Command: %s\n", command)
 		HandleConnectionInitiation(request[COMMAND_LENGTH:], net_platform)
 		break
 
 	case "connection_reply":
+		fmt.Printf("Command: %s\n", command)
 		HandleConnectionReply(request[COMMAND_LENGTH:], net_platform)
 		break
 
@@ -187,11 +184,16 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 		break
 
 	case "variable":
-		fmt.Printf("Received Variable\n")
 		HandleReceiveVariable(request[COMMAND_LENGTH:], net_platform)
 		break
 
+	case "array":
+		log.Printf("Command: %s\n", command)
+		HandleReceiveArray(request[COMMAND_LENGTH:], net_platform)
+		break
+
 	case "symbol_table":
+		fmt.Printf("Command: %s\n", command)
 		HandleReceiveSymbolTable(request[COMMAND_LENGTH:], net_platform)
 		break
 
@@ -204,22 +206,27 @@ func HandleTCPConnection(conn net.Conn, net_platform *NetworkPlatform) error {
 		break
 
 	case "get_var":
-		fmt.Printf("Received Variable Request\n")
 		handleGetVariableRequest(request[COMMAND_LENGTH:], net_platform)
 		break
 
 	case "validity_info":
-		fmt.Printf("Received Variable Invalidation\n")
 		handleVariableInvalidation(request[COMMAND_LENGTH:], net_platform)
 		break
+
+	case "function_dispatch":
+		fmt.Printf("Command: %s\n", command)
+		handleFunctionDispatch(request[COMMAND_LENGTH:], net_platform)
+		break
 	}
+
+	request = nil
 
 	return nil
 }
 
 // Gob Encode
 // Details: https://pkg.go.dev/encoding/gob
-func GobEncode(data interface{}) []byte {
+func GobEncode(data any) []byte {
 	var buff bytes.Buffer
 
 	// the encoded data is stored in buff and the data to be encoded is `data`
@@ -243,11 +250,63 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 	// go CommunicateFileSystem(net_platform)
 	// go Synchronize(net_platform)
 	for {
-		conn, err := net_platform.listener.Accept()
+		conn, err := net_platform.listener.AcceptTCP()
 		if err != nil {
 			fmt.Printf("Failed to Accept the incoming connection.  Error: %s\n", err.Error())
-			break
+			continue
 		}
-		go HandleTCPConnection(conn, net_platform)
+		// conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+		go func(conn *net.TCPConn) {
+			defer conn.Close()
+			for {
+
+				var request []byte
+				request = make([]byte, 4)
+				_, err := io.ReadAtLeast(conn, request, 4)
+				if err != nil {
+					log.Printf("Connection Reading error while reading length: %s\n", err)
+					return
+				}
+
+				length := getLengthFromBytes(request)
+				if length == 0 {
+					continue
+				}
+
+				request = make([]byte, length)
+				_, err = io.ReadAtLeast(conn, request, length)
+				if err != nil {
+					request = nil
+					// Close the connection
+					if errors.Is(err, net.ErrClosed) {
+						fmt.Printf("Connection closed by the peer")
+						return
+					}
+					log.Printf("Connection Reading error while reading data: %s\n", err)
+					return
+				}
+				if len(request) != 0 {
+					go HandleTCPConnection(request, net_platform)
+				}
+			}
+		}(conn)
 	}
 }
+
+// func HandleTCPConnectionTest(conn net.Conn, net_platform *NetworkPlatform) {
+// 	// request, err := io.ReadAll(conn)
+// 	request := make([]byte, 2048)
+// 	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+// 	len, err := io.ReadAtLeast(conn, request, COMMAND_LENGTH)
+
+// 	// defer tcp_connection.Close()
+// 	if err != nil {
+// 		// Close the connection
+// 		if errors.Is(err, net.ErrClosed) {
+// 			log.Printf("Connection closed by the peer")
+// 			return false
+// 		}
+// 		log.Printf(err.Error())
+// 		return false
+// 	}
+// }

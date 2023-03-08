@@ -2,12 +2,14 @@ package lib
 
 import (
 	"errors"
+	"hash/fnv"
 	"reflect"
 	"sync"
 	"time"
 )
 
 type State int
+type Type int
 
 const (
 	Modified  State = 0
@@ -16,7 +18,8 @@ const (
 	Invalid   State = 3
 )
 
-type SymbolTable map[string]*Variable
+// TODO: ppok refer to this symbol table code
+type SymbolTable map[uint32]*Variable
 
 /*
 Variable that is communicated in distributed network
@@ -26,25 +29,23 @@ Variable that is communicated in distributed network
   - ughhh to much work
 */
 type Variable struct {
-	Id      string // id is basically variable name
+	Id      uint32 // id is basically variable name
 	Dtype   string
 	IsConst bool // if it is constant, we don't need to request for it to another node, we can just retrieve iit locally
 
-	Data      interface{}
-	Timestamp time.Time
-	mutex     sync.Mutex // for locally accessing variable by multiple goroutine @internallly reading and writng
-
+	Data        interface{}
+	Timestamp   time.Time
+	mutex       sync.Mutex // for locally accessing variable by multiple goroutine @internallly reading and writng
 	access_lock sync.Mutex // to prevent race condition for receiveing the value and exclusive region
 
 	is_valid    bool
 	source_node string // ip of the source node, is acessed only when is_vallid is true
-
-	state State
 }
 
 func CreateVariable(id string, data any, symbol_table *SymbolTable) error {
 	value := Variable{}
-	if _, found := (*symbol_table)[id]; found {
+	hash_value := GetHashValue(id)
+	if _, found := (*symbol_table)[hash_value]; found {
 		return errors.New("Variable already exist")
 	}
 	value.Dtype = reflect.TypeOf(data).String()
@@ -52,16 +53,17 @@ func CreateVariable(id string, data any, symbol_table *SymbolTable) error {
 	value.IsConst = false
 	value.is_valid = true
 
-	value.Id = id
+	value.Id = hash_value
 	value.Timestamp = time.Now()
-	(*symbol_table)[id] = &value
+	(*symbol_table)[value.Id] = &value
 
 	return nil
 }
 
 func CreateConstantVariable(id string, data any, symbol_table *SymbolTable) error {
 	value := Variable{}
-	if _, found := (*symbol_table)[id]; found {
+	hash_value := GetHashValue(id)
+	if _, found := (*symbol_table)[hash_value]; found {
 		return errors.New("Variable already exist")
 	}
 
@@ -70,17 +72,18 @@ func CreateConstantVariable(id string, data any, symbol_table *SymbolTable) erro
 	value.IsConst = true
 	value.is_valid = true
 
-	value.Id = id
+	value.Id = hash_value
 	value.Timestamp = time.Now()
-	(*symbol_table)[id] = &value
+	(*symbol_table)[value.Id] = &value
 
 	return nil
 }
 
 func CreateOrSetValue(id string, data any, symbol_table *SymbolTable) error {
+	hash_value := GetHashValue(id)
 	value := Variable{}
-	if variable, exists := (*symbol_table)[id]; exists {
-		if reflect.TypeOf((*symbol_table)[id].Data) != reflect.TypeOf(data) {
+	if variable, exists := (*symbol_table)[hash_value]; exists {
+		if reflect.TypeOf((*symbol_table)[hash_value].Data) != reflect.TypeOf(data) {
 			return errors.New("Type mismatch for previous and new value")
 		}
 
@@ -90,11 +93,11 @@ func CreateOrSetValue(id string, data any, symbol_table *SymbolTable) error {
 	value.Dtype = reflect.TypeOf(data).String()
 	value.Data = data
 	value.is_valid = true
-
+	value.Id = hash_value
 	value.IsConst = false
 
-	(*symbol_table)[id] = &value
-	value.Timestamp = time.Now()
+	(*symbol_table)[hash_value] = &value
+	// value.Timestamp = time.Now()
 	return nil
 }
 
@@ -124,7 +127,7 @@ func (value *Variable) SetVariable(variable *Variable) {
 	defer value.mutex.Unlock()
 	value.Data = variable.Data
 	value.Timestamp = variable.Timestamp
-	value.Dtype = variable.Dtype
+	// value.Dtype = variable.Dtype
 	value.IsConst = variable.IsConst
 }
 
@@ -152,10 +155,8 @@ func (value *Variable) SetSourceNode(source string) {
 	value.source_node = source
 }
 
-func (value *Variable) GetState() State {
-	return value.state
-}
-
-func (value *Variable) SetState(_state State) {
-	value.state = _state
+func GetHashValue(id string) uint32 {
+	h := fnv.New32()
+	h.Write([]byte(id))
+	return h.Sum32()
 }

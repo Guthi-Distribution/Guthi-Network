@@ -5,7 +5,6 @@ import (
 	"unsafe"
 )
 
-//TODO: Need better name
 /*
 	Initializes the the basic structure needed for core communication
 */
@@ -14,6 +13,8 @@ import (
 #cgo CXXFLAGS: "-std=c++20 -I../Guthi-Core/src/"
 #cgo LDFLAGS: -L../Guthi-Core/lib -lGuthiCore -lpdh -lstdc++
 #include "../Guthi-Core/src/core/c_api.h"
+#include <stdlib.h>
+#include <string.h>
 */
 import "C"
 
@@ -54,7 +55,19 @@ func GetFileSystem() FilesystemCore {
 
 func SetFileSystem(fs FilesystemCore) {
 	filesystem = fs
-	shared_memory.WriteSharedMemory([]byte(filesystem.Fs), MESSSAGE_FILESYSTEM)
+	C.SetFilesystem(C.CString(filesystem.Fs), C.int(filesystem.Size))
+	// shared_memory.WriteSharedMemory([]byte(filesystem.Fs), MESSSAGE_FILESYSTEM)
+}
+
+func CreateFile(file_name string, contents string) {
+	file_name_C, file_name_size := C.CString(file_name), C.int(len(file_name))
+	contents_C, contents_size := C.CString(contents), C.int(len(contents))
+
+	// var ip [4]uint8
+	ip := make([]uint8, 4)
+	C.PrettyPrintFileSystem()
+	C.AddToFileCache(file_name_C, file_name_size, (*C.uchar)(&ip[0]), contents_C, contents_size)
+	C.PrettyPrintFileSystem()
 }
 
 // Runtime info structure

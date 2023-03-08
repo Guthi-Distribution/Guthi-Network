@@ -82,7 +82,8 @@ func HandleReceiveMemoryInformation(request []byte, net_platfom *NetworkPlatform
 
 	node_index := net_platfom.get_node_from_string(payload.AddrFrom)
 	if node_index < 0 {
-		// handle if the node information is not available, it can happen if the node is removed
+		//TODO: handle if the node information is not available, it can happen if the node is removed
+		return nil
 	}
 	net_platfom.Connection_caches[node_index].Memory_info = payload.MemoryStatus
 
@@ -99,6 +100,7 @@ func HandleReceiveCpuInformation(request []byte, net_platfom *NetworkPlatform) e
 	node_index := net_platfom.get_node_from_string(payload.AddrFrom)
 	if node_index < 0 {
 		// handle if the node information is not available, it can happen if the node is removed
+		return nil
 	}
 	net_platfom.Connection_caches[node_index].Cpu_info = payload.CpuStatus
 	net_platfom.Connection_caches[node_index].Cpu_info.Usage = payload.TotalUsage
