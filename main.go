@@ -68,17 +68,32 @@ func does_diverge(c *Complex, radius float64, max_iter int) int {
 	return iter
 }
 
+func WaveColoring(c Complex, max_iter int, radius float64) float64 {
+	z := Complex{0, 0}
+	iterations := 0
+	for i := 0; i < max_iter; i++ {
+		z = add(multiply(z, z), c)
+		iterations += 1
+		if z.absolute() >= radius {
+			break
+		}
+	}
+	Amount := 0.2
+	return 0.5 * math.Sin(Amount*float64(iterations))
+}
+
 func render_mandelbrot(range_number int) {
-	diff := (width / 2)
+	diff := width / 2
 	min := 0 + range_number*diff
 	max := diff + range_number*diff
-	max_iter := 100
-	radius := 3.0
+	max_iter := 500
+	radius := 4.0
 
 	fmt.Println(min, max)
-	start := Complex{-2.5, -2}
+	start := Complex{-1.5, -2}
 	end := Complex{1, 2}
 	net_platform := platform.GetPlatform()
+	curr_time := time.Now().UnixMilli()
 	for x := 0; x < width; x++ {
 		real := start.real + (float64(x)/float64(width))*(end.real-start.real)
 		for y := min; y < max; y++ {
@@ -86,22 +101,19 @@ func render_mandelbrot(range_number int) {
 			z := Complex{real, imag}
 			n_iter := does_diverge(&z, radius, max_iter)
 
-			color_element := uint16(math.Min((float64(n_iter)-math.Log2(z.absolute()/float64(radius)))/float64(max_iter)*255, 255.0))
-			color_element = uint16(n_iter * 255 / max_iter)
+			color_element := uint16(utility.Min((float64(n_iter)-math.Log2(z.absolute()/float64(radius)))/float64(max_iter)*255, 255.0))
 			color := Color{color_element, utility.Min(255, color_element*2), utility.Min(255, color_element*3)}
-			// _, err := net_platform.GetDataOfArray("mandelbrot", width*x+y)
 			err := net_platform.SetDataOfArray("mandelbrot", width*x+y, color)
 			if err != nil {
 				log.Printf("Index: %d\n", width*x+y)
 				panic(err)
 			}
-			// data := _data.(Color)
 		}
 		fmt.Printf("Index completed: %d\n", x)
 	}
 	platform.Send_array_to_nodes("mandelbrot", net_platform)
-
 	fmt.Println("Completed")
+	fmt.Printf("Total time taken: %d\n", time.Now().UnixMilli()-curr_time)
 }
 
 func LoadConfiguration(file string) Config {
@@ -162,8 +174,8 @@ type Color struct {
 }
 
 func main() {
-	width = 1024
-	height = 1024
+	width = 256
+	height = 256
 	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
 	sum_type := flag.Int("range", 0, "Type of range")
 
@@ -189,7 +201,7 @@ func main() {
 	net_platform.RegisterFunction(render_mandelbrot)
 	if *port == 6969 {
 		curr_time := time.Now().UnixMilli()
-		net_platform.CreateArray("mandelbrot", width*width, c)
+		net_platform.CreateArray("mandelbrot", width*height, c)
 		fmt.Println(time.Now().UnixMilli() - curr_time)
 		fmt.Println("Not Debugging process")
 
@@ -215,9 +227,9 @@ func main() {
 			if err != nil {
 
 			}
-			r := c.(Color).R
-			g := c.(Color).R
-			b := c.(Color).R
+			r := utility.Min(c.(Color).R*3, 255)
+			g := utility.Min(c.(Color).R*5, 255)
+			b := utility.Min(c.(Color).R*7, 255)
 			im.Set(i, j, color.RGBA{uint8(r), uint8(g), uint8(b), 255})
 		}
 		fmt.Printf("Index completed: %d\n", i)

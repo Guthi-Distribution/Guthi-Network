@@ -16,7 +16,7 @@ import (
 */
 type GetVariable struct {
 	AddrFrom string
-	Id       string
+	Id       uint32
 }
 
 type VariableInfo struct {
@@ -55,9 +55,9 @@ func SendVariableToNodes(value *lib.Variable, net_platform *NetworkPlatform) err
 
 func Send_array_to_nodes(id string, net_platform *NetworkPlatform) error {
 	var values []*lib.Variable
-	values = append(values, net_platform.symbol_table[id])
-	for i := 0; i < values[0].Data.(Array).Size; i++ {
-		value, err := net_platform.getValueInvalidated(get_array_id(id, i))
+	values = append(values, net_platform.symbol_table[lib.GetHashValue(id)])
+	for i := 0; i < values[0].Data.(array).Size; i++ {
+		value, err := net_platform.getValueInvalidated(lib.GetHashValue(get_array_id(id, i)))
 		if err != nil {
 			return err
 		}
@@ -68,9 +68,9 @@ func Send_array_to_nodes(id string, net_platform *NetworkPlatform) error {
 		values,
 	}
 	data := append(CommandStringToBytes("array"), GobEncode(variable)...)
-	var err error
+
 	for _, node := range net_platform.Connected_nodes {
-		err = sendDataToAddress(node.GetAddressString(), data, net_platform)
+		err := sendDataToAddress(node.GetAddressString(), data, net_platform)
 		if err != nil {
 			return err
 		}
@@ -82,7 +82,7 @@ func Send_array_to_nodes(id string, net_platform *NetworkPlatform) error {
 func sendGetVariable(net_platform *NetworkPlatform, value_id string, address string) {
 	payload := GetVariable{
 		net_platform.GetNodeAddress(),
-		value_id,
+		lib.GetHashValue(value_id),
 	}
 	// log.Printf("Sending request of id: %s\n", value_id)
 	data := append(CommandStringToBytes("get_var"), GobEncode(payload)...)
@@ -95,7 +95,7 @@ func handleGetVariableRequest(request []byte, net_platform *NetworkPlatform) {
 
 	value, err := net_platform.getValueInvalidated(payload.Id)
 	if err != nil {
-		log.Printf("Id: %s does not exists\n", payload.Id)
+		log.Printf("Id: %d does not exists\n", payload.Id)
 		return
 	}
 	variable := VariableInfo{
@@ -148,10 +148,10 @@ func HandleReceiveVariable(request []byte, net_platform *NetworkPlatform) error 
 	value.Lock()
 	defer value.UnLock()
 	if err != nil {
-		if value.Dtype != payload.Value.Dtype {
-			// Send Error to the node as differnet data type
-			log.Panic("Type mismatch for received variable")
-		}
+		// if value.Dtype != payload.Value.Dtype {
+		// 	// Send Error to the node as differnet data type
+		// 	log.Panic("Type mismatch for received variable")
+		// }
 	}
 	// fmt.Println("Received value: ", payload.Value.Data)
 	net_platform.setReceivedValue(payload.Value.Id, payload.Value)
@@ -173,7 +173,7 @@ func HandleReceiveArray(request []byte, net_platform *NetworkPlatform) error {
 		return err
 	}
 	net_platform.setReceivedValue(payload.Value[0].Id, payload.Value[0])
-	for i := 0; i < payload.Value[0].Data.(Array).Size; i++ {
+	for i := 0; i < payload.Value[0].Data.(array).Size; i++ {
 		value, _ := net_platform.getValueInvalidated(payload.Value[i].Id)
 		if value == nil || value.GetSourceNode() == payload.AddrFrom {
 			net_platform.setReceivedValue(payload.Value[i].Id, payload.Value[i])
@@ -181,6 +181,7 @@ func HandleReceiveArray(request []byte, net_platform *NetworkPlatform) error {
 	}
 	value.SetValid(true)
 	value.SetSourceNode("")
+	log.Println("Received entire array")
 	return nil
 }
 
@@ -220,7 +221,7 @@ func HandleReceiveSymbolTable(request []byte, net_platform *NetworkPlatform) err
 
 type ValidityInfo struct {
 	AddrFrom string
-	VarId    string
+	VarId    uint32
 }
 
 func sendVariableInvalidation(value *lib.Variable, net_platform *NetworkPlatform) interface{} {
@@ -230,8 +231,8 @@ func sendVariableInvalidation(value *lib.Variable, net_platform *NetworkPlatform
 		value.Id,
 	}
 	data := append(CommandStringToBytes("validity_info"), GobEncode(payload)...)
-	for _, node := range net_platform.Connected_nodes {
-		sendDataToAddress(node.GetAddressString(), data, net_platform)
+	for i := range net_platform.Connected_nodes {
+		go sendDataToNode(&net_platform.Connected_nodes[i], data, net_platform)
 	}
 	return data
 }
