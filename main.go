@@ -22,11 +22,6 @@ import (
 var width int
 var height int
 
-/*
-TODO:
-  - State Management
-  - Creation of variable in single node
-*/
 type Config struct {
 	Name    string `json:"name"`
 	Address string `json:"address"`

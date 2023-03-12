@@ -2,7 +2,6 @@ package platform
 
 /*
 TODO:
-- Check if the node is alive or not
 - Implement checkpointing
 */
 import (
@@ -118,11 +117,9 @@ func HandleNodeResponse(request []byte, net_platform *NetworkPlatform) {
 Wrapper function for all the handling of various request and response
 first 32 bytes command, rest payload
 */
-func HandleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
+func handleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 
-	// first 32 bytes to hold the command
-	// TODO: Format the header data
-	//  TODO: ppok - use bytes to command string and reverse
+	// first 24 bytes to hold the command
 	command := BytesToCommandString(request[:COMMAND_LENGTH])
 
 	// TODO: Log this into file
@@ -185,7 +182,7 @@ func HandleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 		break
 
 	case "variable":
-		HandleReceiveVariable(request[COMMAND_LENGTH:], net_platform)
+		handleReceiveVariable(request[COMMAND_LENGTH:], net_platform)
 		break
 
 	case "array":
@@ -301,27 +298,9 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 					return
 				}
 				if len(request) != 0 {
-					go HandleTCPConnection(request, net_platform)
+					go handleTCPConnection(request, net_platform)
 				}
 			}
 		}(conn)
 	}
 }
-
-// func HandleTCPConnectionTest(conn net.Conn, net_platform *NetworkPlatform) {
-// 	// request, err := io.ReadAll(conn)
-// 	request := make([]byte, 2048)
-// 	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-// 	len, err := io.ReadAtLeast(conn, request, COMMAND_LENGTH)
-
-// 	// defer tcp_connection.Close()
-// 	if err != nil {
-// 		// Close the connection
-// 		if errors.Is(err, net.ErrClosed) {
-// 			log.Printf("Connection closed by the peer")
-// 			return false
-// 		}
-// 		log.Printf(err.Error())
-// 		return false
-// 	}
-// }

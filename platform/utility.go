@@ -98,7 +98,6 @@ func sendDataToNode(node *NetworkNode, data []byte, net_platform *NetworkPlatfor
 }
 
 func sendDataToAddress(addr string, data []byte, net_platform *NetworkPlatform) error {
-
 	// This is a blocking call make it non blocking
 	sending_addr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {

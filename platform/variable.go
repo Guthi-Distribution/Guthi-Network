@@ -110,31 +110,7 @@ func handleGetVariableRequest(request []byte, net_platform *NetworkPlatform) {
 	sendDataToAddress(payload.AddrFrom, data, net_platform)
 }
 
-/*
-FIXME: This should not be occuring when the token is locked as other operation are being carried and can cause invalid or out of date data access
-can cause data races
-final solution can be to invalidate the data
-sending data on each update can be problematic and is very resource consuming
-
-	sendGetVariable(net_platform *NetworkPlatform, value *lib.Variable) {
-		payload := GetVariable{
-			net_platform.GetNodeAddress(),
-			value.Id,
-		}
-
-		data := append(CommandStringToBytes("get_var"), GobEncode(payload)...)
-		sendDataToAddress(value.GetSourceNode(), data, net_platform)
-
-NOTE: Possible solution
-  - invalidate the data
-  - when the data is accessed, and is found to be invalidated, then the variable is requested from the node that changed the value
-  - this solution can also fix the problem for out of the order data acess
-  - if the data is an entire structure, then if only some value is changed, we need to send/receive entire structure (TODO: Work on this)
-  - Currently, workin on primitive type only, how can we handle complex structure (Certainly json is not the way, may be Gob encode??)
-    TODO: Consult punpun and Babu rd sir in this issue
-*/
-func HandleReceiveVariable(request []byte, net_platform *NetworkPlatform) error {
-	// TODO: Maybe have another mutex, but that can lead to deadlock?
+func handleReceiveVariable(request []byte, net_platform *NetworkPlatform) error {
 	var payload VariableInfo
 	err := gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
 	if err != nil {
@@ -161,7 +137,6 @@ func HandleReceiveVariable(request []byte, net_platform *NetworkPlatform) error 
 }
 
 func HandleReceiveArray(request []byte, net_platform *NetworkPlatform) error {
-	// TODO: Maybe have another mutex, but that can lead to deadlock?
 	var payload ArrayInfo
 	err := gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
 	if err != nil {

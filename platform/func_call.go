@@ -95,7 +95,7 @@ func CallInterfaceFunction(inArgs GobEncodedBytes) GobEncodedBytes {
 					Returns:   nil,
 					Err:       "Can have function with a single argument",
 				}
-				//TODO: Add this to platform
+
 				var encoded bytes.Buffer
 				err := gob.NewEncoder(&encoded).Encode(errReturn)
 				if err != nil {
@@ -150,7 +150,6 @@ func (net_platform *NetworkPlatform) CallFunction(func_name string, args interfa
 }
 
 /*
-TODO: Add pending function dispatch
 Dispatches a function into multiple nodes
 Args:
 
