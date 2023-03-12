@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-type NodeFailureEventHandler func(*NetworkPlatform, string) // interface so that use can pass it's own structures
-type FunctionExecutionCompletionHandler func()              // interface so that use can pass it's own structures
+type NodeFailureEventHandler func(NetworkNode) // interface so that use can pass it's own structures
+type FunctionExecutionCompletionHandler func() // interface so that use can pass it's own structures
 
 /*
 Site struct for suzuki kasami synchronization
@@ -64,6 +64,14 @@ type NetworkNode struct {
 
 func (node *NetworkNode) GetAddressString() string {
 	return node.Socket.String()
+}
+
+func (node *NetworkNode) GetFunctionState(func_name string) (interface{}, error) {
+	if state, exists := node.function_state[func_name]; exists {
+		return state, nil
+	}
+
+	return nil, errors.New(fmt.Sprintf("State not set for function %s\b", func_name))
 }
 
 type NetworkPlatform struct {
@@ -234,9 +242,9 @@ func (self *NetworkPlatform) get_node_from_string(addr string) int {
 */
 
 type state_function struct {
-	AddrFrom  string
-	func_name string
-	state     interface{}
+	AddrFrom string
+	FuncName string
+	State    interface{}
 }
 
 func (net_platform *NetworkPlatform) bindFunctionState(node *NetworkNode, func_name string, state interface{}) error {
@@ -245,6 +253,9 @@ func (net_platform *NetworkPlatform) bindFunctionState(node *NetworkNode, func_n
 		return errors.New(fmt.Sprintf("Function %s no registered\n", func_name))
 	}
 
+	if node.function_state == nil {
+		node.function_state = make(map[string]interface{})
+	}
 	node.function_state[func_name] = state
 	return nil
 }
@@ -267,7 +278,10 @@ func handleFunctionState(request []byte) {
 	var payload state_function
 	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
 	node := net_platform.get_node_from_string(payload.AddrFrom)
-	net_platform.bindFunctionState(&net_platform.Connected_nodes[node], payload.func_name, payload.state)
+	if node == -1 {
+		return
+	}
+	net_platform.bindFunctionState(&net_platform.Connected_nodes[node], payload.FuncName, payload.State)
 }
 
 func (net_platform *NetworkPlatform) GetFunctionState(node *NetworkNode, func_name string, state interface{}) error {

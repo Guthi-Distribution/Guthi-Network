@@ -63,7 +63,7 @@ func HandleConnectionInitiation(request []byte, net_platform *NetworkPlatform) e
 
 	err := sendDataToAddress(payload.AddrFrom, append(CommandStringToBytes("connection_reply"), GobEncode(send_payload)...), net_platform)
 	if err != nil {
-		log.Panic(err)
+		log.Printf("Connection initiation error: %s\n", err)
 		return err
 	}
 	return nil

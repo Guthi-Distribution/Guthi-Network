@@ -36,6 +36,7 @@ func CreateNetworkNode(name string, address string, port int) (*NetworkNode, err
 	}
 	networkNode.NodeID = crc64.Checksum([]byte(id), table)
 	networkNode.conn = nil
+	networkNode.function_state = map[string]interface{}{}
 	return networkNode, nil
 }
 
@@ -260,7 +261,7 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 	log.Printf("Localhost is listening ... \n")
 	// go RequestInfomation(net_platform)
 	// go CommunicateFileSystem(net_platform)
-	// go Synchronize(net_platform)
+	go Synchronize(net_platform)
 	for {
 		conn, err := net_platform.listener.AcceptTCP()
 		if err != nil {

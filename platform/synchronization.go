@@ -89,12 +89,7 @@ func CheckForResponse(net_platform *NetworkPlatform) {
 		if curr_time-send_time > 10 {
 			if _, id := pending_connection_time[node]; id {
 				delete(pending_connection_time, node)
-				net_platform.AddToPreviousNodes(node)
-				net_platform.RemoveNodeWithAddress(node)
-
-				if net_platform.node_failure_event_handler != nil {
-					net_platform.node_failure_event_handler(net_platform, node)
-				}
+				handle_node_failure(node)
 			}
 		}
 	}

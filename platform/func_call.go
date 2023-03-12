@@ -156,7 +156,6 @@ Args:
 	func_name: Function that needs to be called
 	args: Argument that needs to be provided to different nodes
 */
-
 func (net_platform *NetworkPlatform) DispatchFunction(func_name string, args []interface{}) {
 	if len(args) == 0 {
 		return
@@ -181,6 +180,11 @@ func (net_platform *NetworkPlatform) DispatchFunction(func_name string, args []i
 	}
 
 	net_platform.CallFunction(func_name, args[0], "")
+}
+
+func AddPendingDispatch(func_name string, param interface{}) {
+	input := remoteFunctionInvoke{FName: func_name, Value: param}
+	pending_function_dispatch = append(pending_function_dispatch, input)
 }
 
 type functionDispatchInfo struct {
