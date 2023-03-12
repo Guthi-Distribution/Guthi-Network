@@ -14,6 +14,7 @@ import (
 
 // global store/map for storing function
 var globalFuncStore = make(map[string]interface{}, 100)
+var pending_function_dispatch []remoteFunctionInvoke
 
 type FunctionInformation struct {
 	Key      string
@@ -128,8 +129,6 @@ type function_dispatch_status struct {
 
 /*
 TODO:
-  - Add node wise parameter binding, along with main node (just like master thread)
-  - Add feature for returing function
   - Maybe, add each callback function for every function call
   - Add CallId, so that we can even cache function call with same signature
 */
@@ -147,8 +146,6 @@ func (net_platform *NetworkPlatform) CallFunction(func_name string, args interfa
 		panic(err)
 	}
 
-	// TODO: Fix this execution issue
-	// var retValue RemoteFuncReturn
 	CallInterfaceFunction(encodedBuffer.Bytes())
 }
 
@@ -160,21 +157,31 @@ Args:
 	func_name: Function that needs to be called
 	args: Argument that needs to be provided to different nodes
 */
+
 func (net_platform *NetworkPlatform) DispatchFunction(func_name string, args []interface{}) {
-	input := remoteFunctionInvoke{FName: GetFunctionName(func_name), Value: args}
 	if len(args) == 0 {
 		return
 	}
 
-	var encodedBuffer bytes.Buffer
-	err := gob.NewEncoder(&encodedBuffer).Encode(input)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "error while encoding interface:")
-		panic(err)
+	log.Println("Calling function")
+	length := len(args)
+	args_index := 1
+	for index := range net_platform.Connected_nodes {
+		if index >= length-1 || args_index >= length {
+			break
+		}
+		args_index++
+		net_platform.CallFunction(func_name, args[index+1], net_platform.Connected_nodes[index].GetAddressString())
 	}
-	// TODO: Fix this execution issue
-	// var retValue RemoteFuncReturn
-	CallInterfaceFunction(encodedBuffer.Bytes())
+
+	for args_index < length {
+		log.Println("Adding to pending functio dipatch")
+		input := remoteFunctionInvoke{FName: func_name, Value: args[args_index]}
+		pending_function_dispatch = append(pending_function_dispatch, input)
+		args_index++
+	}
+
+	net_platform.CallFunction(func_name, args[0], "")
 }
 
 type functionDispatchInfo struct {

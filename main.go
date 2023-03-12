@@ -5,7 +5,6 @@ package main
 import (
 	"GuthiNetwork/platform"
 	"GuthiNetwork/utility"
-	"bufio"
 	"encoding/gob"
 	"encoding/json"
 	"flag"
@@ -18,8 +17,6 @@ import (
 	"os"
 	"sync"
 	"time"
-
-	"github.com/mitchellh/go-ps"
 )
 
 var width int
@@ -144,6 +141,7 @@ func render_mandelbrot(range_number int) {
 			}
 		}
 		fmt.Printf("Index completed: %d\n", x)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	platform.Send_array_to_nodes("mandelbrot", net_platform)
@@ -183,23 +181,6 @@ func sum(range_number int) {
 
 	sum, _ := net_platform.GetData("total_sum")
 	fmt.Println("Total sum: ", sum)
-}
-
-func isLaunchedByDebugger() bool {
-	pid := os.Getppid()
-
-	// We loop in case there were intermediary processes like the gopls language server.
-	for pid != 0 {
-		switch p, err := ps.FindProcess(pid); {
-		case err != nil:
-			return false
-		case p.Executable() == "dlv":
-			return true
-		default:
-			pid = p.PPid()
-		}
-	}
-	return false
 }
 
 type Color struct {
@@ -242,17 +223,18 @@ func main() {
 		fmt.Println(time.Now().UnixMilli() - curr_time)
 		fmt.Println("Not Debugging process")
 
-		if !isLaunchedByDebugger() {
-			reader := bufio.NewReader(os.Stdin)
-			reader.ReadString('\n')
-		} else {
-			for len(net_platform.Connected_nodes) == 0 {
+		// if !isLaunchedByDebugger() {
+		// 	reader := bufio.NewReader(os.Stdin)
+		// 	reader.ReadString('\n')
+		// } else {
+		// 	for len(net_platform.Connected_nodes) == 0 {
 
-			}
-		}
-		// args := []interface{}{0, 1}
-		net_platform.CallFunction(platform.GetFunctionName(render_mandelbrot), 0, "")
-		net_platform.CallFunction(platform.GetFunctionName(render_mandelbrot), 1, net_platform.Connected_nodes[0].GetAddressString())
+		// 	}
+		// }
+		args := []interface{}{0, 1}
+		// net_platform.CallFunction(platform.GetFunctionName(render_mandelbrot), 0, "")
+		// net_platform.CallFunction(platform.GetFunctionName(render_mandelbrot), 1, net_platform.Connected_nodes[0].GetAddressString())
+		net_platform.DispatchFunction("render_mandelbrot", args)
 	}
 
 	sg.Wait()

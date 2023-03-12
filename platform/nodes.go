@@ -100,6 +100,7 @@ Handles when nodes information is received
 - Adds the nodes to connected nodes
 */
 func HandleNodeResponse(request []byte, net_platform *NetworkPlatform) {
+	fmt.Println("Received Node info")
 	var payload NodesMessage
 	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
 	fmt.Printf("Address received from %s\n", payload.AddrFrom)
@@ -195,6 +196,11 @@ func HandleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 	case "symbol_table":
 		fmt.Printf("Command: %s\n", command)
 		HandleReceiveSymbolTable(request[COMMAND_LENGTH:], net_platform)
+		break
+
+	case "symbol_table_ack":
+		fmt.Printf("Command: %s\n", command)
+		handleReceiveSymbolTableAck(request[COMMAND_LENGTH:], net_platform)
 		break
 
 	case "token_request_sk":

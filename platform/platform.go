@@ -68,12 +68,14 @@ func (node *NetworkNode) GetAddressString() string {
 
 type NetworkPlatform struct {
 	// Well, there's just a single writer but multiple readers. So RWMutex sounds better choice
-	Self_node            *NetworkNode `json:"self_node"`
-	symbol_table         lib.SymbolTable
-	listener             *net.TCPListener
-	Connected_nodes      []NetworkNode `json:"connected_nodes"` // nodes that are connected right noe
-	Connection_History   []string      `json:"history"`         // nodes information that are prevoisly connected
-	Connection_caches    []CacheEntry  `json:"cache_entry"`
+	Self_node          *NetworkNode `json:"self_node"`
+	symbol_table       lib.SymbolTable
+	received_stbl_ack  map[uint64]bool
+	listener           *net.TCPListener
+	Connected_nodes    []NetworkNode `json:"connected_nodes"` // nodes that are connected right noe
+	Connection_History []string      `json:"history"`         // nodes information that are prevoisly connected
+	Connection_caches  []CacheEntry  `json:"cache_entry"`
+
 	symbol_table_mutex   sync.RWMutex
 	code_execution_mutex sync.Mutex
 
@@ -103,6 +105,7 @@ func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatf
 	network_platform.code_execution_mutex = sync.Mutex{}
 	network_platform.node_failure_event_handler = nil
 	network_platform.function_completed = make(map[string]FunctionExecutionCompletionHandler)
+	network_platform.received_stbl_ack = make(map[uint64]bool)
 
 	if err != nil {
 		return nil, err
@@ -160,6 +163,7 @@ func (self *NetworkPlatform) AddToPreviousNodes(addr string) {
 
 func (self *NetworkPlatform) AddNode(node NetworkNode) {
 	if !self.knows(node.Socket.String()) {
+		// TODO: Data race
 		self.Connected_nodes = append(self.Connected_nodes, node)
 		// when adding a node, create a cache entry too
 		self.Connection_caches = append(self.Connection_caches, CacheEntry{
@@ -288,8 +292,8 @@ func (net_platform *NetworkPlatform) GetFunctionState(node *NetworkNode, func_na
 ----------------------------------------------------------------------------------------------
 */
 func (net_platform *NetworkPlatform) CreateVariable(id string, data any) error {
-	net_platform.symbol_table_mutex.Lock()
-	defer net_platform.symbol_table_mutex.Unlock()
+	net_platform.symbol_table_mutex.RLock()
+	defer net_platform.symbol_table_mutex.RUnlock()
 	err := lib.CreateVariable(id, data, &net_platform.symbol_table)
 	SendVariableToNodes(net_platform.symbol_table[lib.GetHashValue(id)], net_platform)
 	if err != nil {
@@ -312,10 +316,12 @@ func (net_platform *NetworkPlatform) CreateOrSetValue(id string, data any) error
 }
 
 func (net_platform *NetworkPlatform) SetValue(id string, _value *lib.Variable) error {
-	net_platform.symbol_table_mutex.RLock()
+	net_platform.symbol_table_mutex.Lock()
+
 	value := net_platform.symbol_table[lib.GetHashValue(id)]
 	value.SetVariable(_value)
-	net_platform.symbol_table_mutex.RUnlock()
+
+	net_platform.symbol_table_mutex.Unlock()
 	defer value.UnLock()
 	// SendVariableToNodes(value, net_platform)
 	sendVariableInvalidation(value, net_platform)
@@ -323,27 +329,30 @@ func (net_platform *NetworkPlatform) SetValue(id string, _value *lib.Variable) e
 }
 
 func (net_platform *NetworkPlatform) setReceivedValue(id uint32, _value *lib.Variable) {
-	net_platform.symbol_table_mutex.RLock()
+	net_platform.symbol_table_mutex.Lock()
 	value := net_platform.symbol_table[id]
+	if value == nil {
+		return
+	}
 	value.SetVariable(_value)
 	value.SetValid(true)
-	net_platform.symbol_table_mutex.RUnlock()
+	net_platform.symbol_table_mutex.Unlock()
 }
 
 func (net_platform *NetworkPlatform) SetData(id string, data interface{}) error {
-	net_platform.symbol_table_mutex.RLock()
+	net_platform.symbol_table_mutex.Lock()
 	value := net_platform.symbol_table[lib.GetHashValue(id)]
 	value.SetValue(data)
-	net_platform.symbol_table_mutex.RUnlock()
+	net_platform.symbol_table_mutex.Unlock()
 
 	sendVariableInvalidation(value, net_platform)
 	return nil
 }
 
 func (net_platform *NetworkPlatform) GetValue(id string) (*lib.Variable, error) {
-	net_platform.symbol_table_mutex.RLock()
+	net_platform.symbol_table_mutex.Lock()
 	value, exists := net_platform.symbol_table[lib.GetHashValue(id)]
-	net_platform.symbol_table_mutex.RUnlock()
+	net_platform.symbol_table_mutex.Unlock()
 	if !exists {
 		return nil, errors.New(fmt.Sprintf("Variable %s not found", id))
 	}
@@ -378,7 +387,7 @@ func (net_platform *NetworkPlatform) getValueInvalidated(id uint32) (*lib.Variab
 	//FIXME: CRD
 	value, exists := net_platform.symbol_table[id]
 	if !exists {
-		return nil, errors.New("Variable not found")
+		return nil, errors.New(fmt.Sprintf("Variable %d not found", id))
 	}
 
 	return value, nil

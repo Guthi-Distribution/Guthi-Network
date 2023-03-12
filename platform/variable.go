@@ -202,7 +202,7 @@ func HandleReceiveSymbolTable(request []byte, net_platform *NetworkPlatform) err
 	if err != nil {
 		return errors.New(fmt.Sprintf("Gob decoder error:%s", err))
 	}
-	fmt.Printf("INFO: Table Size: %d", len(payload.Table))
+	fmt.Printf("INFO: Table Size: %d\n", len(payload.Table))
 
 	for id, value := range payload.Table {
 		if _, found := net_platform.symbol_table[id]; found {
@@ -213,7 +213,40 @@ func HandleReceiveSymbolTable(request []byte, net_platform *NetworkPlatform) err
 		}
 		value.SetValid(true)
 		// value.SetSourceNode(payload.AddrFrom)
+		net_platform.symbol_table_mutex.Lock()
 		net_platform.symbol_table[id] = value
+		net_platform.symbol_table_mutex.Unlock()
+
+	}
+
+	sendTableReceiveAcknowledgement(net_platform, payload.AddrFrom)
+
+	return err
+}
+
+func sendTableReceiveAcknowledgement(net_platform *NetworkPlatform, address string) error {
+	variables := GetInformation{
+		AddrFrom: net_platform.GetNodeAddress(),
+	}
+	data := GobEncode(variables)
+	return sendDataToAddress(address, append(CommandStringToBytes("symbol_table_ack"), data...), net_platform)
+}
+
+func handleReceiveSymbolTableAck(request []byte, net_platform *NetworkPlatform) error {
+	var payload GetInformation
+	err := gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Gob decoder error:%s", err))
+	}
+	node := net_platform.get_node_from_string(payload.AddrFrom)
+	if node != -1 {
+		net_platform.received_stbl_ack[net_platform.Connected_nodes[node].NodeID] = true
+	}
+
+	if len(pending_function_dispatch) > 0 {
+		dispatch_info := pending_function_dispatch[0]
+		pending_function_dispatch = pending_function_dispatch[1:]
+		net_platform.CallFunction(dispatch_info.FName, dispatch_info.Value, payload.AddrFrom)
 	}
 
 	return err
@@ -232,7 +265,8 @@ func sendVariableInvalidation(value *lib.Variable, net_platform *NetworkPlatform
 	}
 	data := append(CommandStringToBytes("validity_info"), GobEncode(payload)...)
 	for i := range net_platform.Connected_nodes {
-		go sendDataToNode(&net_platform.Connected_nodes[i], data, net_platform)
+		sendDataToNode(&net_platform.Connected_nodes[i], data, net_platform)
+
 	}
 	return data
 }
@@ -241,8 +275,11 @@ func handleVariableInvalidation(request []byte, net_platform *NetworkPlatform) {
 	var payload ValidityInfo
 	gob.NewDecoder(bytes.NewReader(request)).Decode(&payload)
 
-	value, _ := net_platform.getValueInvalidated(payload.VarId)
-	// fmt.Println("Received Value invalidation: ", payload.VarId)
+	value, err := net_platform.getValueInvalidated(payload.VarId)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	value.SetValid(false)
 	value.SetSourceNode(payload.AddrFrom)
 }
