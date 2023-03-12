@@ -103,30 +103,20 @@ func CallInterfaceFunction(inArgs GobEncodedBytes) GobEncodedBytes {
 			in[0] = reflect.ValueOf(remoteData.Value)
 
 			fValue.Call(in)
-
-			// retOut := make([]interface{}, outArgsCount-1)
-
-			// for i := 0; i < outArgsCount-1; i++ {
-			// 	retOut[i] = out[i].Interface()
-			// }
-			// errReturn := out[outArgsCount-1].Interface().(string)
-
-			// r := RemoteFuncReturn{
-			// 	RetsCount: outArgsCount,
-			// 	Err:       errReturn,
-			// 	Returns:   retOut,
-			// }
-
-			// 	var encoded bytes.Buffer
-			// err := gob.NewEncoder(&encoded).Encode(r)
-			// if err != nil {
-			// 	panic(err)
-			// }
-			// return encoded.Bytes()
 		}
 	}
 	return nil
 }
+
+type function_dispatch_status struct {
+	Args_count      int
+	Agrs            []interface{}
+	dispatch_count  int
+	completed_count int
+}
+
+// call id to functionDispatchInfo
+// var function_dispatch_status map[int]functionDispatchInfo
 
 /*
 TODO:
@@ -137,6 +127,7 @@ TODO:
 */
 func (net_platform *NetworkPlatform) CallFunction(func_name string, args interface{}, address string) {
 	input := remoteFunctionInvoke{FName: func_name, Value: args}
+
 	if address != "" && address != network_platform.GetNodeAddress() {
 		sendFunctionDispatch(func_name, args, net_platform, address)
 		return
@@ -150,18 +141,32 @@ func (net_platform *NetworkPlatform) CallFunction(func_name string, args interfa
 
 	// TODO: Fix this execution issue
 	// var retValue RemoteFuncReturn
-	go CallInterfaceFunction(encodedBuffer.Bytes())
-	// if nbytes != nil {
-	// 	err = gob.NewDecoder(bytes.NewReader(nbytes)).Decode(&retValue)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// 	if len(retValue.Err) > 0 {
-	// 		fmt.Fprintf(os.Stderr, retValue.Err)
-	// 		return
-	// 	}
-	// }
-	// fmt.Println(retValue.Returns...)
+	CallInterfaceFunction(encodedBuffer.Bytes())
+}
+
+/*
+TODO: Add pending function dispatch
+Dispatches a function into multiple nodes
+Args:
+
+	func_name: Function that needs to be called
+	args: Argument that needs to be provided to different nodes
+*/
+func (net_platform *NetworkPlatform) DispatchFunction(func_name string, args []interface{}) {
+	input := remoteFunctionInvoke{FName: GetFunctionName(func_name), Value: args}
+	if len(args) == 0 {
+		return
+	}
+
+	var encodedBuffer bytes.Buffer
+	err := gob.NewEncoder(&encodedBuffer).Encode(input)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error while encoding interface:")
+		panic(err)
+	}
+	// TODO: Fix this execution issue
+	// var retValue RemoteFuncReturn
+	CallInterfaceFunction(encodedBuffer.Bytes())
 }
 
 type functionDispatchInfo struct {

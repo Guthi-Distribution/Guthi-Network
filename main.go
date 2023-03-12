@@ -39,6 +39,11 @@ type Complex struct {
 	real, imag float64
 }
 
+type MandelbrotState struct {
+	index int
+	count int
+}
+
 func (c *Complex) absolute() float64 {
 	return math.Sqrt(c.real*c.real + c.imag*c.imag)
 }
@@ -88,6 +93,9 @@ func render_mandelbrot(range_number int) {
 	max := diff + range_number*diff
 	max_iter := 500
 	radius := 4.0
+	state := MandelbrotState{}
+	state.index = range_number
+	state.count = 0
 
 	fmt.Println(min, max)
 	start := Complex{-1.5, -2}
@@ -104,6 +112,8 @@ func render_mandelbrot(range_number int) {
 			color_element := uint16(utility.Min((float64(n_iter)-math.Log2(z.absolute()/float64(radius)))/float64(max_iter)*255, 255.0))
 			color := Color{color_element, utility.Min(255, color_element*2), utility.Min(255, color_element*3)}
 			err := net_platform.SetDataOfArray("mandelbrot", width*x+y, color)
+			state.count++
+			platform.SetState("render_mandelbrot", state)
 			if err != nil {
 				log.Printf("Index: %d\n", width*x+y)
 				panic(err)
@@ -213,6 +223,7 @@ func main() {
 
 			}
 		}
+		// args := []interface{}{0, 1}
 		net_platform.CallFunction(platform.GetFunctionName(render_mandelbrot), 0, "")
 		net_platform.CallFunction(platform.GetFunctionName(render_mandelbrot), 1, net_platform.Connected_nodes[0].GetAddressString())
 	}

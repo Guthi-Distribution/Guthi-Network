@@ -217,6 +217,9 @@ func HandleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 		fmt.Printf("Command: %s\n", command)
 		handleFunctionDispatch(request[COMMAND_LENGTH:], net_platform)
 		break
+
+	case "func_state":
+		handleFunctionState(request[COMMAND_LENGTH:])
 	}
 
 	request = nil
@@ -269,7 +272,7 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 				}
 
 				length := getLengthFromBytes(request)
-				if length == 0 {
+				if length <= 0 {
 					continue
 				}
 

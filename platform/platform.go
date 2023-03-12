@@ -3,10 +3,10 @@ package platform
 import (
 	"GuthiNetwork/core"
 	"GuthiNetwork/lib"
+	"bytes"
 	"encoding/gob"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -51,11 +51,14 @@ type tokenInfo struct {
 Network Node, and platform struct and methods
 */
 type NetworkNode struct {
-	NodeID uint64 `json:"id"`
-	Name   string `json:"name"`
-	// TCP Addr is akin to socket. So, its only used when its listening for connection, right?
+	NodeID uint64       `json:"id"`
+	Name   string       `json:"name"`
 	Socket *net.TCPAddr `json:"address"`
-	conn   *net.TCPConn
+	// function_dispatch_status map[string]function_dispatch_info
+	conn *net.TCPConn
+
+	// state
+	function_state map[string]interface{}
 }
 
 func (node *NetworkNode) GetAddressString() string {
@@ -130,7 +133,7 @@ func (self *NetworkPlatform) RemoveNode(node NetworkNode) {
 	j := 0
 
 	for _, elem := range self.Connected_nodes {
-		if elem != node {
+		if elem.Name != node.Name || elem.NodeID != elem.NodeID || elem.Socket != node.Socket {
 			new_arr[j] = elem
 			j++
 		}
@@ -208,6 +211,75 @@ func (self *NetworkPlatform) get_node_from_string(addr string) int {
 	return -1
 }
 
+/*
+----------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+-------------------------------------------------Function State-------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+*/
+
+type state_function struct {
+	AddrFrom  string
+	func_name string
+	state     interface{}
+}
+
+func (net_platform *NetworkPlatform) bindFunctionState(node *NetworkNode, func_name string, state interface{}) error {
+	_, exists := globalFuncStore[func_name]
+	if !exists {
+		return errors.New(fmt.Sprintf("Function %s no registered\n", func_name))
+	}
+
+	node.function_state[func_name] = state
+	return nil
+}
+
+func SetState(func_name string, state interface{}) {
+	payload := state_function{
+		GetPlatform().GetNodeAddress(),
+		func_name,
+		state,
+	}
+
+	data := append(CommandStringToBytes("func_state"), GobEncode(payload)...)
+	for i := range GetPlatform().Connected_nodes {
+		sendDataToNode(&GetPlatform().Connected_nodes[i], data, GetPlatform())
+	}
+}
+
+func handleFunctionState(request []byte) {
+	net_platform := GetPlatform()
+	var payload state_function
+	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
+	node := net_platform.get_node_from_string(payload.AddrFrom)
+	net_platform.bindFunctionState(&net_platform.Connected_nodes[node], payload.func_name, payload.state)
+}
+
+func (net_platform *NetworkPlatform) GetFunctionState(node *NetworkNode, func_name string, state interface{}) error {
+	_, exists := globalFuncStore[func_name]
+	if !exists {
+		return errors.New(fmt.Sprintf("Function %s no registered\n", func_name))
+	}
+
+	node.function_state[func_name] = state
+	return nil
+}
+
+/*
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
+-----------------------------------------VARIABLE---------------------------------------------
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
+*/
 func (net_platform *NetworkPlatform) CreateVariable(id string, data any) error {
 	net_platform.symbol_table_mutex.Lock()
 	defer net_platform.symbol_table_mutex.Unlock()
@@ -269,7 +341,6 @@ func (net_platform *NetworkPlatform) GetValue(id string) (*lib.Variable, error) 
 		return nil, errors.New(fmt.Sprintf("Variable %s not found", id))
 	}
 	if !value.IsValid() {
-		log.Printf("Getting variable: %s\n", id)
 		sendGetVariable(net_platform, id, value.GetSourceNode())
 	}
 
@@ -342,8 +413,6 @@ func (net_platform *NetworkPlatform) CreateArray(id string, size int, data inter
 	}
 	net_platform.symbol_table_mutex.RLock()
 	_, exists := net_platform.symbol_table[lib.GetHashValue(id)]
-	// if the array exists, then it is being created by another node
-	// FIXME: Do something else
 	if exists {
 		return nil
 	}
