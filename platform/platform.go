@@ -7,6 +7,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -397,8 +398,6 @@ Don't care if the validate or not
 func (net_platform *NetworkPlatform) getValueInvalidated(id uint32) (*lib.Variable, error) {
 	net_platform.symbol_table_mutex.RLock()
 	defer net_platform.symbol_table_mutex.RUnlock()
-
-	//FIXME: CRD
 	value, exists := net_platform.symbol_table[id]
 	if !exists {
 		return nil, errors.New(fmt.Sprintf("Variable %d not found", id))
@@ -422,7 +421,7 @@ type array struct {
 }
 
 func get_array_id(id string, index int) string {
-	index_str := fmt.Sprintf("__%s__%d", id, index)
+	index_str := fmt.Sprintf("__%s__%d__guthi_array", id, index)
 	return index_str
 }
 
@@ -466,6 +465,7 @@ func (net_platform *NetworkPlatform) CreateArray(id string, size int, data inter
 func (net_platform *NetworkPlatform) SetDataOfArray(id string, index int, data interface{}) error {
 	value, err := net_platform.GetValue(id)
 	if err != nil {
+		log.Panic("variable does not exist")
 		return errors.New("Variable does not exist")
 	}
 	array := value.GetData().(array)

@@ -191,6 +191,11 @@ func handleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 		HandleReceiveArray(request[COMMAND_LENGTH:], net_platform)
 		break
 
+	case "indexed_array":
+		log.Printf("Command: %s\n", command)
+		HandleReceiveIndexedArray(request[COMMAND_LENGTH:], net_platform)
+		break
+
 	case "symbol_table":
 		fmt.Printf("Command: %s\n", command)
 		HandleReceiveSymbolTable(request[COMMAND_LENGTH:], net_platform)

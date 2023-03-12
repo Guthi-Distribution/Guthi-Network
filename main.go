@@ -52,6 +52,7 @@ func main() {
 			MandelbrotParam{0, 0},
 			MandelbrotParam{1, 0},
 		}
+		// time.Sleep(time.Second * 2)
 		net_platform.DispatchFunction("render_mandelbrot", args)
 	}
 

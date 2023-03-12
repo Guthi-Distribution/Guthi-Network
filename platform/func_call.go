@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // global store/map for storing function
@@ -156,10 +157,13 @@ Args:
 	func_name: Function that needs to be called
 	args: Argument that needs to be provided to different nodes
 */
+
 func (net_platform *NetworkPlatform) DispatchFunction(func_name string, args []interface{}) {
 	if len(args) == 0 {
 		return
 	}
+
+	go net_platform.CallFunction(func_name, args[0], "")
 
 	log.Println("Calling function")
 	length := len(args)
@@ -178,8 +182,6 @@ func (net_platform *NetworkPlatform) DispatchFunction(func_name string, args []i
 		pending_function_dispatch = append(pending_function_dispatch, input)
 		args_index++
 	}
-
-	net_platform.CallFunction(func_name, args[0], "")
 }
 
 func AddPendingDispatch(func_name string, param interface{}) {
@@ -214,6 +216,7 @@ func handleFunctionDispatch(data []byte, net_platform *NetworkPlatform) {
 			var args []reflect.Value = make([]reflect.Value, 1)
 			args[0] = reflect.ValueOf(payload.Param)
 			fValue.Call(args)
+			time.Sleep(time.Second)
 
 			payload := function_execution_completed{
 				network_platform.Self_node.GetAddressString(),

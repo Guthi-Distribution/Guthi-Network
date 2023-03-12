@@ -60,5 +60,6 @@ func node_failure_handler(node platform.NetworkNode) {
 		log.Println(err)
 		return
 	}
+	log.Println("Adding pending connection")
 	platform.AddPendingDispatch("render_mandelbrot", state)
 }

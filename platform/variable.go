@@ -29,6 +29,13 @@ type ArrayInfo struct {
 	Value    []*lib.Variable
 }
 
+type IndexedArrayInfo struct {
+	AddrFrom     string
+	Value        []*lib.Variable
+	InitialIndex int
+	Count        int
+}
+
 type TableInfo struct {
 	AddrFrom string
 	Table    lib.SymbolTable
@@ -55,19 +62,71 @@ func SendVariableToNodes(value *lib.Variable, net_platform *NetworkPlatform) err
 
 func Send_array_to_nodes(id string, net_platform *NetworkPlatform) error {
 	var values []*lib.Variable
-	values = append(values, net_platform.symbol_table[lib.GetHashValue(id)])
-	for i := 0; i < values[0].Data.(array).Size; i++ {
+	array_value, err := net_platform.GetData(id)
+
+	if err != nil {
+		panic(err)
+	}
+
+	size := array_value.(array).Size
+	values = make([]*lib.Variable, size+1)
+	values[0] = net_platform.symbol_table[lib.GetHashValue(id)]
+	for i := 1; i <= size; i++ {
 		value, err := net_platform.getValueInvalidated(lib.GetHashValue(get_array_id(id, i)))
 		if err != nil {
 			return err
 		}
-		values = append(values, value)
+		values[i] = value
 	}
 	variable := ArrayInfo{
 		net_platform.Self_node.GetAddressString(),
 		values,
 	}
 	data := append(CommandStringToBytes("array"), GobEncode(variable)...)
+
+	for _, node := range net_platform.Connected_nodes {
+		err := sendDataToAddress(node.GetAddressString(), data, net_platform)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func SendIndexedArray(id string, initial_index int, count int, net_platform *NetworkPlatform) error {
+	var values []*lib.Variable
+	array_value, err := net_platform.GetData(id)
+
+	if err != nil {
+		panic(err)
+	}
+
+	if initial_index+count > array_value.(array).Size {
+		return errors.New("Index out of bounds\n")
+	}
+
+	size := count
+	values = make([]*lib.Variable, size+1)
+	values[0] = net_platform.symbol_table[lib.GetHashValue(id)]
+
+	index := 1
+	for i := initial_index + 1; i <= initial_index+count; i++ {
+		value, err := net_platform.getValueInvalidated(lib.GetHashValue(get_array_id(id, i)))
+		if err != nil {
+			return err
+		}
+		values[index] = value
+		index++
+	}
+
+	variable := IndexedArrayInfo{
+		net_platform.Self_node.GetAddressString(),
+		values,
+		initial_index,
+		count,
+	}
+	data := append(CommandStringToBytes("indexed_array"), GobEncode(variable)...)
 
 	for _, node := range net_platform.Connected_nodes {
 		err := sendDataToAddress(node.GetAddressString(), data, net_platform)
@@ -160,6 +219,34 @@ func HandleReceiveArray(request []byte, net_platform *NetworkPlatform) error {
 	return nil
 }
 
+func HandleReceiveIndexedArray(request []byte, net_platform *NetworkPlatform) error {
+	var payload IndexedArrayInfo
+	err := gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Gob decoder error:%s", err))
+	}
+
+	value, err := net_platform.getValueInvalidated(payload.Value[0].Id)
+	if err != nil {
+		return err
+	}
+	net_platform.setReceivedValue(payload.Value[0].Id, payload.Value[0])
+
+	index := 1
+	for i := payload.InitialIndex + 1; i < payload.Count+payload.InitialIndex; i++ {
+		value, _ := net_platform.getValueInvalidated(payload.Value[index].Id)
+		if value == nil || value.GetSourceNode() == payload.AddrFrom {
+			net_platform.setReceivedValue(payload.Value[index].Id, payload.Value[index])
+		}
+		index++
+	}
+	payload.Value = nil
+	value.SetValid(true)
+	value.SetSourceNode("")
+	log.Println("Received entire array")
+	return nil
+}
+
 func SendTableToNode(net_platform *NetworkPlatform, address string) error {
 	net_platform.symbol_table_mutex.RLock()
 	defer net_platform.symbol_table_mutex.RUnlock()
@@ -213,10 +300,7 @@ func handleReceiveSymbolTableAck(request []byte, net_platform *NetworkPlatform) 
 	if err != nil {
 		return errors.New(fmt.Sprintf("Gob decoder error:%s", err))
 	}
-	node := net_platform.get_node_from_string(payload.AddrFrom)
-	if node != -1 {
-		net_platform.received_stbl_ack[net_platform.Connected_nodes[node].NodeID] = true
-	}
+	// node := net_platform.get_node_from_string(payload.AddrFrom)
 
 	if len(pending_function_dispatch) > 0 {
 		dispatch_info := pending_function_dispatch[0]
@@ -241,7 +325,6 @@ func sendVariableInvalidation(value *lib.Variable, net_platform *NetworkPlatform
 	data := append(CommandStringToBytes("validity_info"), GobEncode(payload)...)
 	for i := range net_platform.Connected_nodes {
 		sendDataToNode(&net_platform.Connected_nodes[i], data, net_platform)
-
 	}
 	return data
 }
@@ -252,7 +335,7 @@ func handleVariableInvalidation(request []byte, net_platform *NetworkPlatform) {
 
 	value, err := net_platform.getValueInvalidated(payload.VarId)
 	if err != nil {
-		log.Println(err)
+		// log.Println(err)
 		return
 	}
 	value.SetValid(false)

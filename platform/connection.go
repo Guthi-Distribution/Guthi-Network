@@ -59,8 +59,6 @@ func HandleConnectionInitiation(request []byte, net_platform *NetworkPlatform) e
 		IsReply:  false,
 	}
 
-	SendTableToNode(net_platform, payload.AddrFrom)
-
 	err := sendDataToAddress(payload.AddrFrom, append(CommandStringToBytes("connection_reply"), GobEncode(send_payload)...), net_platform)
 	if err != nil {
 		log.Printf("Connection initiation error: %s\n", err)
