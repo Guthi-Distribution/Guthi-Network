@@ -220,6 +220,12 @@ func HandleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 
 	case "func_state":
 		handleFunctionState(request[COMMAND_LENGTH:])
+		break
+
+	case "func_completed":
+		handleFunctionCompletion(request[COMMAND_LENGTH:])
+		break
+
 	}
 
 	request = nil

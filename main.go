@@ -40,8 +40,9 @@ type Complex struct {
 }
 
 type MandelbrotState struct {
-	index int
-	count int
+	index       int
+	count       int
+	total_count int
 }
 
 func (c *Complex) absolute() float64 {
@@ -87,15 +88,39 @@ func WaveColoring(c Complex, max_iter int, radius float64) float64 {
 	return 0.5 * math.Sin(Amount*float64(iterations))
 }
 
+var count int
+
+func plot_mandelbrot() {
+	net_platform := platform.GetPlatform()
+	count++
+	log.Printf("Count %d\n", count)
+	if count == 2 {
+		im := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{width, width}})
+		for i := 0; i < width; i++ {
+			for j := 0; j < width; j++ {
+				c, err := net_platform.GetDataOfArray("mandelbrot", width*i+j)
+				if err != nil {
+
+				}
+				r := utility.Min(c.(Color).R*3, 255)
+				g := utility.Min(c.(Color).R*5, 255)
+				b := utility.Min(c.(Color).R*7, 255)
+				im.Set(i, j, color.RGBA{uint8(r), uint8(g), uint8(b), 255})
+			}
+			fmt.Printf("Index completed: %d\n", i)
+		}
+
+		output, _ := os.Create("img.png")
+		png.Encode(output, im)
+	}
+}
+
 func render_mandelbrot(range_number int) {
 	diff := width / 2
 	min := 0 + range_number*diff
 	max := diff + range_number*diff
 	max_iter := 500
 	radius := 4.0
-	state := MandelbrotState{}
-	state.index = range_number
-	state.count = 0
 
 	fmt.Println(min, max)
 	start := Complex{-1.5, -2}
@@ -112,8 +137,7 @@ func render_mandelbrot(range_number int) {
 			color_element := uint16(utility.Min((float64(n_iter)-math.Log2(z.absolute()/float64(radius)))/float64(max_iter)*255, 255.0))
 			color := Color{color_element, utility.Min(255, color_element*2), utility.Min(255, color_element*3)}
 			err := net_platform.SetDataOfArray("mandelbrot", width*x+y, color)
-			state.count++
-			platform.SetState("render_mandelbrot", state)
+
 			if err != nil {
 				log.Printf("Index: %d\n", width*x+y)
 				panic(err)
@@ -121,6 +145,7 @@ func render_mandelbrot(range_number int) {
 		}
 		fmt.Printf("Index completed: %d\n", x)
 	}
+
 	platform.Send_array_to_nodes("mandelbrot", net_platform)
 	fmt.Println("Completed")
 	fmt.Printf("Total time taken: %d\n", time.Now().UnixMilli()-curr_time)
@@ -184,6 +209,7 @@ type Color struct {
 }
 
 func main() {
+	count = 0
 	width = 256
 	height = 256
 	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
@@ -210,6 +236,7 @@ func main() {
 
 	net_platform.RegisterFunction(render_mandelbrot)
 	if *port == 6969 {
+		net_platform.BindFunctionCompletionEventHandler("render_mandelbrot", plot_mandelbrot)
 		curr_time := time.Now().UnixMilli()
 		net_platform.CreateArray("mandelbrot", width*height, c)
 		fmt.Println(time.Now().UnixMilli() - curr_time)
@@ -227,27 +254,6 @@ func main() {
 		net_platform.CallFunction(platform.GetFunctionName(render_mandelbrot), 0, "")
 		net_platform.CallFunction(platform.GetFunctionName(render_mandelbrot), 1, net_platform.Connected_nodes[0].GetAddressString())
 	}
-
-	reader := bufio.NewReader(os.Stdin)
-	reader.ReadString('\n')
-
-	im := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{width, width}})
-	for i := 0; i < width; i++ {
-		for j := 0; j < width; j++ {
-			c, err := net_platform.GetDataOfArray("mandelbrot", width*i+j)
-			if err != nil {
-
-			}
-			r := utility.Min(c.(Color).R*3, 255)
-			g := utility.Min(c.(Color).R*5, 255)
-			b := utility.Min(c.(Color).R*7, 255)
-			im.Set(i, j, color.RGBA{uint8(r), uint8(g), uint8(b), 255})
-		}
-		fmt.Printf("Index completed: %d\n", i)
-	}
-
-	output, _ := os.Create("img.png")
-	png.Encode(output, im)
 
 	sg.Wait()
 }

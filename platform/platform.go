@@ -13,6 +13,7 @@ import (
 )
 
 type NodeFailureEventHandler func(*NetworkPlatform, string) // interface so that use can pass it's own structures
+type FunctionExecutionCompletionHandler func()              // interface so that use can pass it's own structures
 
 /*
 Site struct for suzuki kasami synchronization
@@ -78,6 +79,7 @@ type NetworkPlatform struct {
 
 	// events
 	node_failure_event_handler NodeFailureEventHandler
+	function_completed         map[string]FunctionExecutionCompletionHandler
 }
 
 var network_platform *NetworkPlatform
@@ -100,6 +102,7 @@ func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatf
 	network_platform.symbol_table_mutex = sync.RWMutex{}
 	network_platform.code_execution_mutex = sync.Mutex{}
 	network_platform.node_failure_event_handler = nil
+	network_platform.function_completed = make(map[string]FunctionExecutionCompletionHandler)
 
 	if err != nil {
 		return nil, err
@@ -126,6 +129,10 @@ func GetPlatform() *NetworkPlatform {
 
 func (net_platform *NetworkPlatform) BindNodeFailureEventHandler(handler NodeFailureEventHandler) {
 	net_platform.node_failure_event_handler = handler
+}
+
+func (net_platform *NetworkPlatform) BindFunctionCompletionEventHandler(func_name string, handler FunctionExecutionCompletionHandler) {
+	net_platform.function_completed[func_name] = handler
 }
 
 func (self *NetworkPlatform) RemoveNode(node NetworkNode) {
@@ -244,7 +251,7 @@ func SetState(func_name string, state interface{}) {
 		func_name,
 		state,
 	}
-
+	network_platform.bindFunctionState(network_platform.Self_node, func_name, state)
 	data := append(CommandStringToBytes("func_state"), GobEncode(payload)...)
 	for i := range GetPlatform().Connected_nodes {
 		sendDataToNode(&GetPlatform().Connected_nodes[i], data, GetPlatform())

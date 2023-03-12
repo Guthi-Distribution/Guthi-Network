@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"reflect"
 	"runtime"
@@ -31,6 +32,11 @@ type RemoteFuncReturn struct {
 type remoteFunctionInvoke struct {
 	FName string
 	Value interface{}
+}
+
+type function_execution_completed struct {
+	AddrFrom string
+	FuncName string
 }
 
 func GetFunctionName(temp interface{}) string {
@@ -101,8 +107,10 @@ func CallInterfaceFunction(inArgs GobEncodedBytes) GobEncodedBytes {
 			// var out []reflect.Value = make([]reflect.Value, outArgsCount)
 
 			in[0] = reflect.ValueOf(remoteData.Value)
-
 			fValue.Call(in)
+			if handler, exists := network_platform.function_completed[remoteData.FName]; exists {
+				handler()
+			}
 		}
 	}
 	return nil
@@ -196,6 +204,25 @@ func handleFunctionDispatch(data []byte, net_platform *NetworkPlatform) {
 			var args []reflect.Value = make([]reflect.Value, 1)
 			args[0] = reflect.ValueOf(payload.Param)
 			fValue.Call(args)
+
+			payload := function_execution_completed{
+				network_platform.Self_node.GetAddressString(),
+				payload.FuncName,
+			}
+			data := append(CommandStringToBytes("func_completed"), GobEncode(payload)...)
+			for i := range network_platform.Connected_nodes {
+				sendDataToNode(&network_platform.Connected_nodes[i], data, network_platform)
+			}
 		}
+	}
+}
+
+func handleFunctionCompletion(request []byte) {
+	var payload function_execution_completed
+	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
+	log.Printf("Received completion status\n")
+	if handler, exists := network_platform.function_completed[payload.FuncName]; exists {
+		log.Printf("Calling handler\n")
+		handler()
 	}
 }
