@@ -519,6 +519,7 @@ func (net_platform *NetworkPlatform) GetDataOfArray(id string, index int) (inter
 func init() {
 	gob.Register(array{})
 	gob.Register(VariableInfo{})
+	pending_dispatch_mutex = sync.Mutex{}
 }
 
 /*

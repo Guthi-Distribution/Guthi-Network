@@ -116,7 +116,7 @@ func HandleNodeResponse(request []byte, net_platform *NetworkPlatform) {
 
 /*
 Wrapper function for all the handling of various request and response
-first 32 bytes command, rest payload
+first 32 bytes commandf, rest payload
 */
 func handleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 
@@ -192,7 +192,6 @@ func handleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 		break
 
 	case "indexed_array":
-		log.Printf("Command: %s\n", command)
 		HandleReceiveIndexedArray(request[COMMAND_LENGTH:], net_platform)
 		break
 

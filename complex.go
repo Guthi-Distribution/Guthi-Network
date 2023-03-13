@@ -128,7 +128,7 @@ func render_mandelbrot(param MandelbrotParam) {
 		param.Row_completed = x
 		platform.SetState("render_mandelbrot", param)
 		fmt.Printf("Index completed: %d\n", x)
-		time.Sleep(time.Millisecond * 10)
+		time.Sleep(time.Millisecond * 50)
 		platform.SendIndexedArray("mandelbrot", height*x, height, net_platform)
 	}
 	// platform.Send_array_to_nodes("mandelbrot", net_platform)

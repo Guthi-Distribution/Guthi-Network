@@ -22,7 +22,7 @@ func main() {
 	range_number = *sum_type
 	fmt.Println(range_number, *sum_type)
 
-	config := LoadConfiguration("configy.json")
+	config := LoadConfiguration("config.json")
 	net_platform, err := platform.CreateNetworkPlatform(config.Name, config.Address, *port)
 	if err != nil {
 		panic(err)
