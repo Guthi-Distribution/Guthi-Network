@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/gob"
 	"fmt"
+	"log"
 	"net"
 )
 
@@ -41,6 +42,7 @@ func (net_platform *NetworkPlatform) ConnectToNode(address string) error {
 	if err != nil {
 		return err
 	}
+	SendTableToNode(net_platform, address)
 
 	return nil
 }
@@ -59,9 +61,9 @@ func HandleConnectionInitiation(request []byte, net_platform *NetworkPlatform) e
 
 	err := sendDataToAddress(payload.AddrFrom, append(CommandStringToBytes("connection_reply"), GobEncode(send_payload)...), net_platform)
 	if err != nil {
+		log.Printf("Connection initiation error: %s\n", err)
 		return err
 	}
-	SendTableToNode(net_platform, payload.AddrFrom)
 	return nil
 }
 
@@ -73,8 +75,9 @@ func HandleConnectionReply(request []byte, net_platform *NetworkPlatform) error 
 	var payload ConnectionReply
 	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
 	net_platform.AddNode(payload.Node)
-
+	SendTableToNode(net_platform, payload.AddrFrom)
 	if !payload.IsReply {
+		log.Println("Reply of a reply")
 		// then a reply is recieved, reply with the self node information
 		send_payload := ConnectionReply{
 			AddrFrom: net_platform.GetNodeAddress(),
@@ -82,6 +85,7 @@ func HandleConnectionReply(request []byte, net_platform *NetworkPlatform) error 
 			IsReply:  true,
 		}
 		err := sendDataToAddress(payload.AddrFrom, append(CommandStringToBytes("connection_reply"), GobEncode(send_payload)...), net_platform)
+
 		if err != nil {
 			return err
 		}

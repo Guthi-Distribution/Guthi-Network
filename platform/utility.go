@@ -52,6 +52,23 @@ func getLengthFromBytes(length_byte_array []byte) int {
 	return length
 }
 
+func handle_node_failure(addr string) {
+	net_platform := GetPlatform()
+	index := net_platform.get_node_from_string(addr)
+	if index == -1 {
+		return
+	}
+	node := net_platform.Connected_nodes[index]
+	fmt.Printf("Connection Failed, for node %s\n", node.Name)
+
+	if net_platform.node_failure_event_handler != nil {
+		net_platform.node_failure_event_handler(node)
+	}
+
+	net_platform.AddToPreviousNodes(addr)
+	net_platform.RemoveNodeWithAddress(addr)
+}
+
 func sendDataToNode(node *NetworkNode, data []byte, net_platform *NetworkPlatform) error {
 	// connect to a network
 
@@ -73,12 +90,7 @@ func sendDataToNode(node *NetworkNode, data []byte, net_platform *NetworkPlatfor
 	}
 	// conn, err = net.DialTCP("tcp", nil, sending_addr)
 	if err != nil {
-		fmt.Printf("Connection Failed, for node %s\n", node.Name)
-		net_platform.AddToPreviousNodes(node.GetAddressString())
-		net_platform.RemoveNodeWithAddress(node.GetAddressString())
-		if net_platform.node_failure_event_handler != nil {
-			net_platform.node_failure_event_handler(net_platform, node.GetAddressString())
-		}
+		handle_node_failure(node.GetAddressString())
 		return err
 	}
 
@@ -89,6 +101,8 @@ func sendDataToNode(node *NetworkNode, data []byte, net_platform *NetworkPlatfor
 			node.conn = nil
 			return sendDataToNode(node, data, net_platform)
 		}
+
+		handle_node_failure(node.GetAddressString())
 		fmt.Printf("Sending data failed, error: %s\n", err.Error())
 		return err
 	}
@@ -98,7 +112,6 @@ func sendDataToNode(node *NetworkNode, data []byte, net_platform *NetworkPlatfor
 }
 
 func sendDataToAddress(addr string, data []byte, net_platform *NetworkPlatform) error {
-
 	// This is a blocking call make it non blocking
 	sending_addr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
@@ -111,12 +124,7 @@ func sendDataToAddress(addr string, data []byte, net_platform *NetworkPlatform) 
 	}
 	conn, err := net.DialTCP("tcp", nil, sending_addr)
 	if err != nil {
-		fmt.Printf("Connection Failed, for node with address: %s\nError: %s", addr, err)
-		net_platform.AddToPreviousNodes(addr)
-		net_platform.RemoveNodeWithAddress(addr)
-		if net_platform.node_failure_event_handler != nil {
-			net_platform.node_failure_event_handler(net_platform, addr)
-		}
+		handle_node_failure(addr)
 		//TODO: handle node failure
 		return err
 	}
@@ -127,54 +135,12 @@ func sendDataToAddress(addr string, data []byte, net_platform *NetworkPlatform) 
 
 	data = nil
 	if err != nil {
+		handle_node_failure(addr)
 		return err
 	}
 
 	return err
 }
-
-// func sendDataToAddress(addr string, data []byte, net_platform *NetworkPlatform) error {
-// 	// This is a blocking call make it non blocking
-// 	// conn, err := net.Dial("tcp", addr)
-// 	var err error
-// 	index := net_platform.get_node_from_string(addr)
-// 	var conn *net.TCPConn
-// 	if index != -1 && net_platform.Connected_nodes[index].conn != nil {
-// 		conn = net_platform.Connected_nodes[index].conn
-// 	} else {
-// 		dst_addr, _ := net.ResolveTCPAddr("tcp", addr)
-// 		src_addr := net_platform.Self_node.Socket
-// 		conn, err = net.DialTCP("tcp", src_addr, dst_addr)
-
-// 		if err != nil {
-// 			fmt.Printf("Connection Failed, for node with address: %s\nError: %s\n", addr, err)
-// 			net_platform.AddToPreviousNodes(addr)
-// 			net_platform.RemoveNodeWithAddress(addr)
-// 			if net_platform.node_failure_event_handler != nil {
-// 				net_platform.node_failure_event_handler(net_platform, addr)
-// 			}
-// 			log.Println(err)
-// 			return err
-// 		}
-
-// 		defer conn.Close()
-// 	}
-// 	_, err = conn.Write(data) // write into connection i.e send data
-
-// 	if err != nil {
-// 		if err == io.EOF {
-// 			log.Println("Client ", conn.RemoteAddr(), " disconnected")
-// 			conn.Close()
-// 			return nil
-// 		} else {
-// 			log.Println("Failed writing bytes to conn: ", conn, " with error ", err)
-// 			conn.Close()
-// 			return err
-// 		}
-// 	}
-
-// 	return nil
-// }
 
 func getForwardSlashPosition(value string) int {
 	for i, c := range value {

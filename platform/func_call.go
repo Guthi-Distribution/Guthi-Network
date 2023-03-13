@@ -5,14 +5,17 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"reflect"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // global store/map for storing function
 var globalFuncStore = make(map[string]interface{}, 100)
+var pending_function_dispatch []remoteFunctionInvoke
 
 type FunctionInformation struct {
 	Key      string
@@ -31,6 +34,11 @@ type RemoteFuncReturn struct {
 type remoteFunctionInvoke struct {
 	FName string
 	Value interface{}
+}
+
+type function_execution_completed struct {
+	AddrFrom string
+	FuncName string
 }
 
 func GetFunctionName(temp interface{}) string {
@@ -88,7 +96,7 @@ func CallInterfaceFunction(inArgs GobEncodedBytes) GobEncodedBytes {
 					Returns:   nil,
 					Err:       "Can have function with a single argument",
 				}
-				//TODO: Add this to platform
+
 				var encoded bytes.Buffer
 				err := gob.NewEncoder(&encoded).Encode(errReturn)
 				if err != nil {
@@ -101,42 +109,33 @@ func CallInterfaceFunction(inArgs GobEncodedBytes) GobEncodedBytes {
 			// var out []reflect.Value = make([]reflect.Value, outArgsCount)
 
 			in[0] = reflect.ValueOf(remoteData.Value)
-
 			fValue.Call(in)
-
-			// retOut := make([]interface{}, outArgsCount-1)
-
-			// for i := 0; i < outArgsCount-1; i++ {
-			// 	retOut[i] = out[i].Interface()
-			// }
-			// errReturn := out[outArgsCount-1].Interface().(string)
-
-			// r := RemoteFuncReturn{
-			// 	RetsCount: outArgsCount,
-			// 	Err:       errReturn,
-			// 	Returns:   retOut,
-			// }
-
-			// 	var encoded bytes.Buffer
-			// err := gob.NewEncoder(&encoded).Encode(r)
-			// if err != nil {
-			// 	panic(err)
-			// }
-			// return encoded.Bytes()
+			if handler, exists := network_platform.function_completed[remoteData.FName]; exists {
+				handler()
+			}
 		}
 	}
 	return nil
 }
 
+type function_dispatch_status struct {
+	Args_count      int
+	Agrs            []interface{}
+	dispatch_count  int
+	completed_count int
+}
+
+// call id to functionDispatchInfo
+// var function_dispatch_status map[int]functionDispatchInfo
+
 /*
 TODO:
-  - Add node wise parameter binding, along with main node (just like master thread)
-  - Add feature for returing function
   - Maybe, add each callback function for every function call
   - Add CallId, so that we can even cache function call with same signature
 */
 func (net_platform *NetworkPlatform) CallFunction(func_name string, args interface{}, address string) {
 	input := remoteFunctionInvoke{FName: func_name, Value: args}
+
 	if address != "" && address != network_platform.GetNodeAddress() {
 		sendFunctionDispatch(func_name, args, net_platform, address)
 		return
@@ -148,20 +147,46 @@ func (net_platform *NetworkPlatform) CallFunction(func_name string, args interfa
 		panic(err)
 	}
 
-	// TODO: Fix this execution issue
-	// var retValue RemoteFuncReturn
-	go CallInterfaceFunction(encodedBuffer.Bytes())
-	// if nbytes != nil {
-	// 	err = gob.NewDecoder(bytes.NewReader(nbytes)).Decode(&retValue)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// 	if len(retValue.Err) > 0 {
-	// 		fmt.Fprintf(os.Stderr, retValue.Err)
-	// 		return
-	// 	}
-	// }
-	// fmt.Println(retValue.Returns...)
+	CallInterfaceFunction(encodedBuffer.Bytes())
+}
+
+/*
+Dispatches a function into multiple nodes
+Args:
+
+	func_name: Function that needs to be called
+	args: Argument that needs to be provided to different nodes
+*/
+
+func (net_platform *NetworkPlatform) DispatchFunction(func_name string, args []interface{}) {
+	if len(args) == 0 {
+		return
+	}
+
+	go net_platform.CallFunction(func_name, args[0], "")
+
+	log.Println("Calling function")
+	length := len(args)
+	args_index := 1
+	for index := range net_platform.Connected_nodes {
+		if index >= length-1 || args_index >= length {
+			break
+		}
+		args_index++
+		net_platform.CallFunction(func_name, args[index+1], net_platform.Connected_nodes[index].GetAddressString())
+	}
+
+	for args_index < length {
+		log.Println("Adding to pending functio dipatch")
+		input := remoteFunctionInvoke{FName: func_name, Value: args[args_index]}
+		pending_function_dispatch = append(pending_function_dispatch, input)
+		args_index++
+	}
+}
+
+func AddPendingDispatch(func_name string, param interface{}) {
+	input := remoteFunctionInvoke{FName: func_name, Value: param}
+	pending_function_dispatch = append(pending_function_dispatch, input)
 }
 
 type functionDispatchInfo struct {
@@ -191,6 +216,26 @@ func handleFunctionDispatch(data []byte, net_platform *NetworkPlatform) {
 			var args []reflect.Value = make([]reflect.Value, 1)
 			args[0] = reflect.ValueOf(payload.Param)
 			fValue.Call(args)
+			time.Sleep(time.Second)
+
+			payload := function_execution_completed{
+				network_platform.Self_node.GetAddressString(),
+				payload.FuncName,
+			}
+			data := append(CommandStringToBytes("func_completed"), GobEncode(payload)...)
+			for i := range network_platform.Connected_nodes {
+				sendDataToNode(&network_platform.Connected_nodes[i], data, network_platform)
+			}
 		}
+	}
+}
+
+func handleFunctionCompletion(request []byte) {
+	var payload function_execution_completed
+	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
+	log.Printf("Received completion status\n")
+	if handler, exists := network_platform.function_completed[payload.FuncName]; exists {
+		log.Printf("Calling handler\n")
+		handler()
 	}
 }

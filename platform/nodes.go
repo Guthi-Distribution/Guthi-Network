@@ -2,7 +2,6 @@ package platform
 
 /*
 TODO:
-- Check if the node is alive or not
 - Implement checkpointing
 */
 import (
@@ -37,6 +36,7 @@ func CreateNetworkNode(name string, address string, port int) (*NetworkNode, err
 	}
 	networkNode.NodeID = crc64.Checksum([]byte(id), table)
 	networkNode.conn = nil
+	networkNode.function_state = map[string]interface{}{}
 	return networkNode, nil
 }
 
@@ -100,6 +100,7 @@ Handles when nodes information is received
 - Adds the nodes to connected nodes
 */
 func HandleNodeResponse(request []byte, net_platform *NetworkPlatform) {
+	fmt.Println("Received Node info")
 	var payload NodesMessage
 	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
 	fmt.Printf("Address received from %s\n", payload.AddrFrom)
@@ -117,11 +118,9 @@ func HandleNodeResponse(request []byte, net_platform *NetworkPlatform) {
 Wrapper function for all the handling of various request and response
 first 32 bytes command, rest payload
 */
-func HandleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
+func handleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 
-	// first 32 bytes to hold the command
-	// TODO: Format the header data
-	//  TODO: ppok - use bytes to command string and reverse
+	// first 24 bytes to hold the command
 	command := BytesToCommandString(request[:COMMAND_LENGTH])
 
 	// TODO: Log this into file
@@ -184,7 +183,7 @@ func HandleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 		break
 
 	case "variable":
-		HandleReceiveVariable(request[COMMAND_LENGTH:], net_platform)
+		handleReceiveVariable(request[COMMAND_LENGTH:], net_platform)
 		break
 
 	case "array":
@@ -192,9 +191,19 @@ func HandleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 		HandleReceiveArray(request[COMMAND_LENGTH:], net_platform)
 		break
 
+	case "indexed_array":
+		log.Printf("Command: %s\n", command)
+		HandleReceiveIndexedArray(request[COMMAND_LENGTH:], net_platform)
+		break
+
 	case "symbol_table":
 		fmt.Printf("Command: %s\n", command)
 		HandleReceiveSymbolTable(request[COMMAND_LENGTH:], net_platform)
+		break
+
+	case "symbol_table_ack":
+		fmt.Printf("Command: %s\n", command)
+		handleReceiveSymbolTableAck(request[COMMAND_LENGTH:], net_platform)
 		break
 
 	case "token_request_sk":
@@ -217,6 +226,15 @@ func HandleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 		fmt.Printf("Command: %s\n", command)
 		handleFunctionDispatch(request[COMMAND_LENGTH:], net_platform)
 		break
+
+	case "func_state":
+		handleFunctionState(request[COMMAND_LENGTH:])
+		break
+
+	case "func_completed":
+		handleFunctionCompletion(request[COMMAND_LENGTH:])
+		break
+
 	}
 
 	request = nil
@@ -248,7 +266,7 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 	log.Printf("Localhost is listening ... \n")
 	// go RequestInfomation(net_platform)
 	// go CommunicateFileSystem(net_platform)
-	// go Synchronize(net_platform)
+	go Synchronize(net_platform)
 	for {
 		conn, err := net_platform.listener.AcceptTCP()
 		if err != nil {
@@ -269,7 +287,7 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 				}
 
 				length := getLengthFromBytes(request)
-				if length == 0 {
+				if length <= 0 {
 					continue
 				}
 
@@ -286,27 +304,9 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 					return
 				}
 				if len(request) != 0 {
-					go HandleTCPConnection(request, net_platform)
+					go handleTCPConnection(request, net_platform)
 				}
 			}
 		}(conn)
 	}
 }
-
-// func HandleTCPConnectionTest(conn net.Conn, net_platform *NetworkPlatform) {
-// 	// request, err := io.ReadAll(conn)
-// 	request := make([]byte, 2048)
-// 	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-// 	len, err := io.ReadAtLeast(conn, request, COMMAND_LENGTH)
-
-// 	// defer tcp_connection.Close()
-// 	if err != nil {
-// 		// Close the connection
-// 		if errors.Is(err, net.ErrClosed) {
-// 			log.Printf("Connection closed by the peer")
-// 			return false
-// 		}
-// 		log.Printf(err.Error())
-// 		return false
-// 	}
-// }

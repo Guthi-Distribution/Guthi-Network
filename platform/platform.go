@@ -3,6 +3,7 @@ package platform
 import (
 	"GuthiNetwork/core"
 	"GuthiNetwork/lib"
+	"bytes"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -12,7 +13,8 @@ import (
 	"time"
 )
 
-type NodeFailureEventHandler func(*NetworkPlatform, string) // interface so that use can pass it's own structures
+type NodeFailureEventHandler func(NetworkNode) // interface so that use can pass it's own structures
+type FunctionExecutionCompletionHandler func() // interface so that use can pass it's own structures
 
 /*
 Site struct for suzuki kasami synchronization
@@ -51,30 +53,44 @@ type tokenInfo struct {
 Network Node, and platform struct and methods
 */
 type NetworkNode struct {
-	NodeID uint64 `json:"id"`
-	Name   string `json:"name"`
-	// TCP Addr is akin to socket. So, its only used when its listening for connection, right?
+	NodeID uint64       `json:"id"`
+	Name   string       `json:"name"`
 	Socket *net.TCPAddr `json:"address"`
-	conn   *net.TCPConn
+	// function_dispatch_status map[string]function_dispatch_info
+	conn *net.TCPConn
+
+	// state
+	function_state map[string]interface{}
 }
 
 func (node *NetworkNode) GetAddressString() string {
 	return node.Socket.String()
 }
 
+func (node *NetworkNode) GetFunctionState(func_name string) (interface{}, error) {
+	if state, exists := node.function_state[func_name]; exists {
+		return state, nil
+	}
+
+	return nil, errors.New(fmt.Sprintf("State not set for function %s\b", func_name))
+}
+
 type NetworkPlatform struct {
 	// Well, there's just a single writer but multiple readers. So RWMutex sounds better choice
-	Self_node            *NetworkNode `json:"self_node"`
-	symbol_table         lib.SymbolTable
-	listener             *net.TCPListener
-	Connected_nodes      []NetworkNode `json:"connected_nodes"` // nodes that are connected right noe
-	Connection_History   []string      `json:"history"`         // nodes information that are prevoisly connected
-	Connection_caches    []CacheEntry  `json:"cache_entry"`
+	Self_node          *NetworkNode `json:"self_node"`
+	symbol_table       lib.SymbolTable
+	received_stbl_ack  map[uint64]bool
+	listener           *net.TCPListener
+	Connected_nodes    []NetworkNode `json:"connected_nodes"` // nodes that are connected right noe
+	Connection_History []string      `json:"history"`         // nodes information that are prevoisly connected
+	Connection_caches  []CacheEntry  `json:"cache_entry"`
+
 	symbol_table_mutex   sync.RWMutex
 	code_execution_mutex sync.Mutex
 
 	// events
 	node_failure_event_handler NodeFailureEventHandler
+	function_completed         map[string]FunctionExecutionCompletionHandler
 }
 
 var network_platform *NetworkPlatform
@@ -97,6 +113,8 @@ func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatf
 	network_platform.symbol_table_mutex = sync.RWMutex{}
 	network_platform.code_execution_mutex = sync.Mutex{}
 	network_platform.node_failure_event_handler = nil
+	network_platform.function_completed = make(map[string]FunctionExecutionCompletionHandler)
+	network_platform.received_stbl_ack = make(map[uint64]bool)
 
 	if err != nil {
 		return nil, err
@@ -125,12 +143,16 @@ func (net_platform *NetworkPlatform) BindNodeFailureEventHandler(handler NodeFai
 	net_platform.node_failure_event_handler = handler
 }
 
+func (net_platform *NetworkPlatform) BindFunctionCompletionEventHandler(func_name string, handler FunctionExecutionCompletionHandler) {
+	net_platform.function_completed[func_name] = handler
+}
+
 func (self *NetworkPlatform) RemoveNode(node NetworkNode) {
 	new_arr := make([]NetworkNode, len(self.Connected_nodes))
 	j := 0
 
 	for _, elem := range self.Connected_nodes {
-		if elem != node {
+		if elem.Name != node.Name || elem.NodeID != elem.NodeID || elem.Socket != node.Socket {
 			new_arr[j] = elem
 			j++
 		}
@@ -150,6 +172,7 @@ func (self *NetworkPlatform) AddToPreviousNodes(addr string) {
 
 func (self *NetworkPlatform) AddNode(node NetworkNode) {
 	if !self.knows(node.Socket.String()) {
+		// TODO: Data race
 		self.Connected_nodes = append(self.Connected_nodes, node)
 		// when adding a node, create a cache entry too
 		self.Connection_caches = append(self.Connection_caches, CacheEntry{
@@ -208,9 +231,84 @@ func (self *NetworkPlatform) get_node_from_string(addr string) int {
 	return -1
 }
 
+/*
+----------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+-------------------------------------------------Function State-------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------
+*/
+
+type state_function struct {
+	AddrFrom string
+	FuncName string
+	State    interface{}
+}
+
+func (net_platform *NetworkPlatform) bindFunctionState(node *NetworkNode, func_name string, state interface{}) error {
+	_, exists := globalFuncStore[func_name]
+	if !exists {
+		return errors.New(fmt.Sprintf("Function %s no registered\n", func_name))
+	}
+
+	if node.function_state == nil {
+		node.function_state = make(map[string]interface{})
+	}
+	node.function_state[func_name] = state
+	return nil
+}
+
+func SetState(func_name string, state interface{}) {
+	payload := state_function{
+		GetPlatform().GetNodeAddress(),
+		func_name,
+		state,
+	}
+	network_platform.bindFunctionState(network_platform.Self_node, func_name, state)
+	data := append(CommandStringToBytes("func_state"), GobEncode(payload)...)
+	for i := range GetPlatform().Connected_nodes {
+		sendDataToNode(&GetPlatform().Connected_nodes[i], data, GetPlatform())
+	}
+}
+
+func handleFunctionState(request []byte) {
+	net_platform := GetPlatform()
+	var payload state_function
+	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
+	node := net_platform.get_node_from_string(payload.AddrFrom)
+	if node == -1 {
+		return
+	}
+	net_platform.bindFunctionState(&net_platform.Connected_nodes[node], payload.FuncName, payload.State)
+}
+
+func (net_platform *NetworkPlatform) GetFunctionState(node *NetworkNode, func_name string, state interface{}) error {
+	_, exists := globalFuncStore[func_name]
+	if !exists {
+		return errors.New(fmt.Sprintf("Function %s no registered\n", func_name))
+	}
+
+	node.function_state[func_name] = state
+	return nil
+}
+
+/*
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
+-----------------------------------------VARIABLE---------------------------------------------
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
+*/
 func (net_platform *NetworkPlatform) CreateVariable(id string, data any) error {
-	net_platform.symbol_table_mutex.Lock()
-	defer net_platform.symbol_table_mutex.Unlock()
+	net_platform.symbol_table_mutex.RLock()
+	defer net_platform.symbol_table_mutex.RUnlock()
 	err := lib.CreateVariable(id, data, &net_platform.symbol_table)
 	SendVariableToNodes(net_platform.symbol_table[lib.GetHashValue(id)], net_platform)
 	if err != nil {
@@ -233,10 +331,12 @@ func (net_platform *NetworkPlatform) CreateOrSetValue(id string, data any) error
 }
 
 func (net_platform *NetworkPlatform) SetValue(id string, _value *lib.Variable) error {
-	net_platform.symbol_table_mutex.RLock()
+	net_platform.symbol_table_mutex.Lock()
+
 	value := net_platform.symbol_table[lib.GetHashValue(id)]
 	value.SetVariable(_value)
-	net_platform.symbol_table_mutex.RUnlock()
+
+	net_platform.symbol_table_mutex.Unlock()
 	defer value.UnLock()
 	// SendVariableToNodes(value, net_platform)
 	sendVariableInvalidation(value, net_platform)
@@ -244,32 +344,34 @@ func (net_platform *NetworkPlatform) SetValue(id string, _value *lib.Variable) e
 }
 
 func (net_platform *NetworkPlatform) setReceivedValue(id uint32, _value *lib.Variable) {
-	net_platform.symbol_table_mutex.RLock()
+	net_platform.symbol_table_mutex.Lock()
 	value := net_platform.symbol_table[id]
+	if value == nil {
+		return
+	}
 	value.SetVariable(_value)
 	value.SetValid(true)
-	net_platform.symbol_table_mutex.RUnlock()
+	net_platform.symbol_table_mutex.Unlock()
 }
 
 func (net_platform *NetworkPlatform) SetData(id string, data interface{}) error {
-	net_platform.symbol_table_mutex.RLock()
+	net_platform.symbol_table_mutex.Lock()
 	value := net_platform.symbol_table[lib.GetHashValue(id)]
 	value.SetValue(data)
-	net_platform.symbol_table_mutex.RUnlock()
+	net_platform.symbol_table_mutex.Unlock()
 
 	sendVariableInvalidation(value, net_platform)
 	return nil
 }
 
 func (net_platform *NetworkPlatform) GetValue(id string) (*lib.Variable, error) {
-	net_platform.symbol_table_mutex.RLock()
+	net_platform.symbol_table_mutex.Lock()
 	value, exists := net_platform.symbol_table[lib.GetHashValue(id)]
-	net_platform.symbol_table_mutex.RUnlock()
+	net_platform.symbol_table_mutex.Unlock()
 	if !exists {
 		return nil, errors.New(fmt.Sprintf("Variable %s not found", id))
 	}
 	if !value.IsValid() {
-		log.Printf("Getting variable: %s\n", id)
 		sendGetVariable(net_platform, id, value.GetSourceNode())
 	}
 
@@ -296,11 +398,9 @@ Don't care if the validate or not
 func (net_platform *NetworkPlatform) getValueInvalidated(id uint32) (*lib.Variable, error) {
 	net_platform.symbol_table_mutex.RLock()
 	defer net_platform.symbol_table_mutex.RUnlock()
-
-	//FIXME: CRD
 	value, exists := net_platform.symbol_table[id]
 	if !exists {
-		return nil, errors.New("Variable not found")
+		return nil, errors.New(fmt.Sprintf("Variable %d not found", id))
 	}
 
 	return value, nil
@@ -321,7 +421,7 @@ type array struct {
 }
 
 func get_array_id(id string, index int) string {
-	index_str := fmt.Sprintf("__%s__%d", id, index)
+	index_str := fmt.Sprintf("__%s__%d__guthi_array", id, index)
 	return index_str
 }
 
@@ -342,8 +442,6 @@ func (net_platform *NetworkPlatform) CreateArray(id string, size int, data inter
 	}
 	net_platform.symbol_table_mutex.RLock()
 	_, exists := net_platform.symbol_table[lib.GetHashValue(id)]
-	// if the array exists, then it is being created by another node
-	// FIXME: Do something else
 	if exists {
 		return nil
 	}
@@ -367,6 +465,7 @@ func (net_platform *NetworkPlatform) CreateArray(id string, size int, data inter
 func (net_platform *NetworkPlatform) SetDataOfArray(id string, index int, data interface{}) error {
 	value, err := net_platform.GetValue(id)
 	if err != nil {
+		log.Panic("variable does not exist")
 		return errors.New("Variable does not exist")
 	}
 	array := value.GetData().(array)
