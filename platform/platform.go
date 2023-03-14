@@ -320,8 +320,8 @@ func (net_platform *NetworkPlatform) CreateVariable(id string, data any) error {
 
 func (net_platform *NetworkPlatform) CreateOrSetValue(id string, data any) error {
 	net_platform.symbol_table_mutex.Lock()
-	defer net_platform.symbol_table_mutex.Unlock()
 	err := lib.CreateOrSetValue(id, data, &net_platform.symbol_table)
+	net_platform.symbol_table_mutex.Unlock()
 	SendVariableToNodes(net_platform.symbol_table[lib.GetHashValue(id)], net_platform)
 	if err != nil {
 		return err
@@ -331,12 +331,11 @@ func (net_platform *NetworkPlatform) CreateOrSetValue(id string, data any) error
 }
 
 func (net_platform *NetworkPlatform) SetValue(id string, _value *lib.Variable) error {
-	net_platform.symbol_table_mutex.Lock()
-
+	net_platform.symbol_table_mutex.RLock()
 	value := net_platform.symbol_table[lib.GetHashValue(id)]
+	net_platform.symbol_table_mutex.RUnlock()
 	value.SetVariable(_value)
 
-	net_platform.symbol_table_mutex.Unlock()
 	defer value.UnLock()
 	// SendVariableToNodes(value, net_platform)
 	sendVariableInvalidation(value, net_platform)
@@ -344,30 +343,30 @@ func (net_platform *NetworkPlatform) SetValue(id string, _value *lib.Variable) e
 }
 
 func (net_platform *NetworkPlatform) setReceivedValue(id uint32, _value *lib.Variable) {
-	net_platform.symbol_table_mutex.Lock()
+	net_platform.symbol_table_mutex.RLock()
 	value := net_platform.symbol_table[id]
+	net_platform.symbol_table_mutex.RUnlock()
 	if value == nil {
 		return
 	}
 	value.SetVariable(_value)
 	value.SetValid(true)
-	net_platform.symbol_table_mutex.Unlock()
 }
 
 func (net_platform *NetworkPlatform) SetData(id string, data interface{}) error {
-	net_platform.symbol_table_mutex.Lock()
+	net_platform.symbol_table_mutex.RLock()
 	value := net_platform.symbol_table[lib.GetHashValue(id)]
 	value.SetValue(data)
-	net_platform.symbol_table_mutex.Unlock()
+	net_platform.symbol_table_mutex.RUnlock()
 
 	sendVariableInvalidation(value, net_platform)
 	return nil
 }
 
 func (net_platform *NetworkPlatform) GetValue(id string) (*lib.Variable, error) {
-	net_platform.symbol_table_mutex.Lock()
+	net_platform.symbol_table_mutex.RLock()
 	value, exists := net_platform.symbol_table[lib.GetHashValue(id)]
-	net_platform.symbol_table_mutex.Unlock()
+	net_platform.symbol_table_mutex.RUnlock()
 	if !exists {
 		return nil, errors.New(fmt.Sprintf("Variable %s not found", id))
 	}

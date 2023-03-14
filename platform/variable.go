@@ -275,6 +275,7 @@ func HandleReceiveSymbolTable(request []byte, net_platform *NetworkPlatform) err
 				err = SendVariableToNodes(value_node, net_platform)
 				continue
 			}
+			value_node.SetVariable(value)
 		}
 		value.SetValid(true)
 		// value.SetSourceNode(payload.AddrFrom)

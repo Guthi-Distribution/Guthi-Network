@@ -66,7 +66,7 @@ func HandleConnectionInitiation(request []byte, net_platform *NetworkPlatform) e
 		return err
 	}
 	SendTableToNode(net_platform, payload.AddrFrom)
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 1)
 
 	dispatch_pending_call(payload.AddrFrom)
 	return nil
