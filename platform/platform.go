@@ -93,7 +93,7 @@ type NetworkPlatform struct {
 	// events
 	node_failure_event_handler NodeFailureEventHandler
 	function_completed         map[string]FunctionExecutionCompletionHandler
-	filesyste_merge            FilesMergeHandler
+	filesystem_merge_handler   FilesMergeHandler
 
 	// daemon
 	daemon_handle *daemon.DaemonHandle
@@ -142,6 +142,7 @@ func CreateNetworkPlatform(name string, address string, port int, initialize_dae
 		network_platform.daemon_handle = daemon.InitializeDaemon()
 	}
 
+	received_file_hash = make(map[string]uint32)
 	return network_platform, nil
 }
 
