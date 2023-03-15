@@ -549,6 +549,7 @@ func (net_platform *NetworkPlatform) TrackFile(filename string) {
 	// core.CreateFile(file_name, contents)
 	//TODO: Implement sending of file
 	// sendFileToNodes(file_name, net_platform)
+
 	if _, exists := tracked_file[filename]; exists {
 		return
 	}

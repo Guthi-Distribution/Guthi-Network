@@ -14,6 +14,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"time"
 )
 
 const (
@@ -278,6 +279,7 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 			if net_platform.daemon_handle == nil {
 				return
 			}
+			time.Sleep(time.Millisecond * 100)
 			daemon.PollMessagesFromDaemon(*net_platform.daemon_handle)
 		}
 	}()

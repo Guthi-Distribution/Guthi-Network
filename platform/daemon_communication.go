@@ -111,7 +111,7 @@ func handleFileContents(request []byte) {
 		received_file_hash[payload.FileName] = lib.GetHashValue(string(payload.Contents))
 	} else {
 		log.Println("WARN: No callback function for handling file merge")
-		err := ioutil.WriteFile(payload.FileName, payload.Contents, 0644)
+		err := ioutil.WriteFile(payload.FileName+network_platform.Self_node.Name, payload.Contents, 0644)
 
 		if err != nil {
 			log.Printf("File writing error: %s\n", err)
