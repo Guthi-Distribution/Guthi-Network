@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"sync"
-	"time"
 )
 
 // There should be one univeral listening port
@@ -24,7 +23,7 @@ func main() {
 
 	config := LoadConfiguration("config.json")
 
-	net_platform, err := platform.CreateNetworkPlatform(config.Name, config.Address, *port, false)
+	net_platform, err := platform.CreateNetworkPlatform(config.Name, config.Address, *port, true)
 	if err != nil {
 		panic(err)
 	}
@@ -34,32 +33,32 @@ func main() {
 	}
 	go platform.ListenForTCPConnection(net_platform)
 
-	// net_platform.TrackFile("test.txt")
+	net_platform.TrackFile("test.txt")
 	var sg sync.WaitGroup
 
 	sg.Add(1)
-	c := Color{}
+	// c := Color{}
 
 	gob.Register(Color{})
 	gob.Register(MandelbrotParam{})
 
 	net_platform.RegisterFunction(render_mandelbrot)
 	net_platform.BindNodeFailureEventHandler(node_failure_handler)
-	if *port == 6969 {
-		net_platform.BindFunctionCompletionEventHandler("render_mandelbrot", plot_mandelbrot)
-		curr_time := time.Now().UnixMilli()
-		net_platform.CreateArray("mandelbrot", width*height, c)
-		fmt.Println(time.Now().UnixMilli() - curr_time)
-		fmt.Println("Not Debugging process")
+	// if *port == 6969 {
+	// 	net_platform.BindFunctionCompletionEventHandler("render_mandelbrot", plot_mandelbrot)
+	// 	curr_time := time.Now().UnixMilli()
+	// 	net_platform.CreateArray("mandelbrot", width*height, c)
+	// 	fmt.Println(time.Now().UnixMilli() - curr_time)
+	// 	fmt.Println("Not Debugging process")
 
-		args := []interface{}{
-			MandelbrotParam{0, 0},
-			MandelbrotParam{1, 0},
-		}
+	// 	args := []interface{}{
+	// 		MandelbrotParam{0, 0},
+	// 		MandelbrotParam{1, 0},
+	// 	}
 
-		// time.Sleep(time.Second * 2)
-		net_platform.DispatchFunction("render_mandelbrot", args)
-	}
+	// 	// time.Sleep(time.Second * 2)
+	// 	net_platform.DispatchFunction("render_mandelbrot", args)
+	// }
 
 	sg.Wait()
 }

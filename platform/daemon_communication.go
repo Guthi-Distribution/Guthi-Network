@@ -2,6 +2,7 @@ package platform
 
 import (
 	"GuthiNetwork/daemon"
+	"GuthiNetwork/lib"
 	"bytes"
 	"encoding/gob"
 	"fmt"
@@ -63,6 +64,10 @@ func ListenForDaemonMessage() {
 					log.Println(err)
 					continue
 				}
+				contents_hash := lib.GetHashValue(string(contents))
+				if contents_hash == received_file_hash[string(message.Msg_content[:message.Msg_len])] {
+					continue
+				}
 
 				payload := FilesystemContents{
 					network_platform.GetNodeAddress(),
@@ -91,12 +96,16 @@ func ListenForDaemonMessage() {
 	}
 }
 
+var received_file_hash map[string]uint32
+
 func handleFileContents(request []byte) {
 	var payload FilesystemContents
 	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
 
-	if network_platform.filesyste_merge != nil {
-		network_platform.filesyste_merge(payload.Contents, payload.FileName)
+	log.Println("received file contents")
+	if network_platform.filesystem_merge_handler != nil {
+		network_platform.filesystem_merge_handler(payload.Contents, payload.FileName)
+		received_file_hash[payload.FileName] = lib.GetHashValue(string(payload.Contents))
 	} else {
 		err := ioutil.WriteFile(payload.FileName, payload.Contents, 0644)
 		if err != nil {
