@@ -99,6 +99,7 @@ func ListenForDaemonMessage() {
 }
 
 var received_file_hash map[string]uint32
+var tracked_file map[string]bool
 
 func handleFileContents(request []byte) {
 	var payload FilesystemContents
@@ -117,6 +118,5 @@ func handleFileContents(request []byte) {
 		}
 	}
 
-	log.Printf("Tracking file:%s\n", payload.FileName)
 	network_platform.TrackFile(payload.FileName)
 }

@@ -143,6 +143,7 @@ func CreateNetworkPlatform(name string, address string, port int, initialize_dae
 	}
 
 	received_file_hash = make(map[string]uint32)
+	tracked_file = make(map[string]bool)
 	return network_platform, nil
 }
 
@@ -548,6 +549,11 @@ func (net_platform *NetworkPlatform) TrackFile(filename string) {
 	// core.CreateFile(file_name, contents)
 	//TODO: Implement sending of file
 	// sendFileToNodes(file_name, net_platform)
+	if _, exists := tracked_file[filename]; exists {
+		return
+	}
+	log.Printf("Tracking file:%s\n", filename)
+	tracked_file[filename] = true
 	if net_platform.daemon_handle == nil {
 		panic("Daemon is not initialized\n")
 	}

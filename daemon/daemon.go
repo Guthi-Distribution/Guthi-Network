@@ -24,6 +24,7 @@ const (
 	EchoMessage          = 6
 	Continuation         = 7 // Response : Continuation of previous message
 	TrackThisFolder      = 8
+	ResetConnection      = 10
 )
 
 type DaemonHandle struct {
