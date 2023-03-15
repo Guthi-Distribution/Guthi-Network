@@ -101,13 +101,14 @@ func render_mandelbrot(param MandelbrotParam) {
 	max_iter := 100
 	radius := 4.0
 
-	fmt.Println(min, max)
 	start := Complex{-2, -2}
 	end := Complex{1, 2}
 	net_platform := platform.GetPlatform()
 	platform.SetState("render_mandelbrot", param)
 
 	start_index := param.Row_completed
+
+	im := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{width, height}})
 	for x := start_index; x < width; x++ {
 		real := start.real + (float64(x)/float64(width))*(end.real-start.real)
 		for y := min; y < max; y++ {
@@ -116,13 +117,18 @@ func render_mandelbrot(param MandelbrotParam) {
 			n_iter := does_diverge(&z, radius, max_iter)
 
 			color_element := uint16(utility.Min((float64(n_iter)-math.Log2(z.absolute()/float64(radius)))/float64(max_iter)*255, 255.0))
-			color := Color{color_element, utility.Min(255, color_element*2), utility.Min(255, color_element*3)}
-			err := net_platform.SetDataOfArray("mandelbrot", height*x+y, color)
+			c := Color{color_element, utility.Min(255, color_element*2), utility.Min(255, color_element*3)}
+			err := net_platform.SetDataOfArray("mandelbrot", height*x+y, c)
 
 			if err != nil {
 				log.Printf("Index: %d\n", width*x+y)
 				panic(err)
 			}
+
+			r := utility.Min(c.R*3, 255)
+			g := utility.Min(c.R*5, 255)
+			b := utility.Min(c.R*7, 255)
+			im.Set(x, y, color.RGBA{uint8(r), uint8(g), uint8(b), 255})
 		}
 
 		param.Row_completed = x
@@ -132,5 +138,7 @@ func render_mandelbrot(param MandelbrotParam) {
 		platform.SendIndexedArray("mandelbrot", height*x, height, net_platform)
 	}
 	// platform.Send_array_to_nodes("mandelbrot", net_platform)
+	output, _ := os.Create(fmt.Sprintf("mandelbrot_node_%d.png", param.Index))
+	png.Encode(output, im)
 	fmt.Println("Completed")
 }
