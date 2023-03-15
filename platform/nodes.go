@@ -5,6 +5,7 @@ TODO:
 - Implement checkpointing
 */
 import (
+	"GuthiNetwork/daemon"
 	"bytes"
 	"encoding/gob"
 	"errors"
@@ -234,10 +235,16 @@ func handleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 		handleFunctionCompletion(request[COMMAND_LENGTH:])
 		break
 
+	case "daemon_msg":
+		handleDaemonMessageFromNodes(request[COMMAND_LENGTH:])
+		break
+
+	case "file_content":
+		handleFileContents(request[COMMAND_LENGTH:])
+
 	}
 
 	request = nil
-
 	return nil
 }
 
@@ -266,6 +273,15 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 	// go RequestInfomation(net_platform)
 	// go CommunicateFileSystem(net_platform)
 	go Synchronize(net_platform)
+	go func() {
+		for true {
+			if net_platform.daemon_handle == nil {
+				return
+			}
+			daemon.PollMessagesFromDaemon(*net_platform.daemon_handle)
+		}
+	}()
+	go ListenForDaemonMessage()
 	for {
 		conn, err := net_platform.listener.AcceptTCP()
 		if err != nil {

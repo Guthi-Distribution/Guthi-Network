@@ -2,6 +2,7 @@ package platform
 
 import (
 	"GuthiNetwork/core"
+	"GuthiNetwork/daemon"
 	"GuthiNetwork/lib"
 	"bytes"
 	"encoding/gob"
@@ -13,8 +14,9 @@ import (
 	"time"
 )
 
-type NodeFailureEventHandler func(NetworkNode) // interface so that use can pass it's own structures
-type FunctionExecutionCompletionHandler func() // interface so that use can pass it's own structures
+type NodeFailureEventHandler func(NetworkNode)
+type FilesMergeHandler func(contets []byte, filename string)
+type FunctionExecutionCompletionHandler func()
 
 /*
 Site struct for suzuki kasami synchronization
@@ -91,11 +93,15 @@ type NetworkPlatform struct {
 	// events
 	node_failure_event_handler NodeFailureEventHandler
 	function_completed         map[string]FunctionExecutionCompletionHandler
+	filesyste_merge            FilesMergeHandler
+
+	// daemon
+	daemon_handle *daemon.DaemonHandle
 }
 
 var network_platform *NetworkPlatform
 
-func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatform, error) {
+func CreateNetworkPlatform(name string, address string, port int, initialize_daemon bool) (*NetworkPlatform, error) {
 	// only one struct is possible, need only one value
 	if network_platform != nil {
 		return network_platform, nil
@@ -131,6 +137,10 @@ func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatf
 	site.setHasToken(false)
 	site.IsExecuting = false
 	site.Request_messages = make(map[uint64]uint64)
+
+	if initialize_daemon {
+		network_platform.daemon_handle = daemon.InitializeDaemon()
+	}
 
 	return network_platform, nil
 }
@@ -532,8 +542,15 @@ func init() {
 ---------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------
 */
-func (net_platform *NetworkPlatform) CreateFile(file_name string, contents string) {
-	core.CreateFile(file_name, contents)
+func (net_platform *NetworkPlatform) TrackFile(filename string) {
+	// core.CreateFile(file_name, contents)
 	//TODO: Implement sending of file
 	// sendFileToNodes(file_name, net_platform)
+	if net_platform.daemon_handle == nil {
+		panic("Daemon is not initialized\n")
+	}
+
+	file_name_bytes := []byte(filename)
+	message := daemon.BuildMessage(daemon.TrackThisFile, uint32(len(filename)), file_name_bytes)
+	daemon.SendFormattedMessage(*net_platform.daemon_handle, message)
 }

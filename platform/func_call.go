@@ -159,7 +159,6 @@ Args:
 	func_name: Function that needs to be called
 	args: Argument that needs to be provided to different nodes
 */
-
 func (net_platform *NetworkPlatform) DispatchFunction(func_name string, args []interface{}) {
 	if len(args) == 0 {
 		return

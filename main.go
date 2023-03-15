@@ -1,7 +1,5 @@
 package main
 
-// There should be one univeral listening port
-
 import (
 	"GuthiNetwork/platform"
 	"encoding/gob"
@@ -10,6 +8,8 @@ import (
 	"sync"
 	"time"
 )
+
+// There should be one univeral listening port
 
 func main() {
 	count = 0
@@ -23,16 +23,20 @@ func main() {
 	fmt.Println(range_number, *sum_type)
 
 	config := LoadConfiguration("config.json")
-	net_platform, err := platform.CreateNetworkPlatform(config.Name, config.Address, *port)
+
+	net_platform, err := platform.CreateNetworkPlatform(config.Name, config.Address, *port, false)
 	if err != nil {
 		panic(err)
 	}
+
 	if net_platform.Self_node.Socket.Port != 6969 {
 		net_platform.ConnectToNode("127.0.0.1:6969") // one of the way to connect to a particular node, request all the nodes information it has
 	}
 	go platform.ListenForTCPConnection(net_platform)
 
+	// net_platform.TrackFile("test.txt")
 	var sg sync.WaitGroup
+
 	sg.Add(1)
 	c := Color{}
 
@@ -52,6 +56,7 @@ func main() {
 			MandelbrotParam{0, 0},
 			MandelbrotParam{1, 0},
 		}
+
 		// time.Sleep(time.Second * 2)
 		net_platform.DispatchFunction("render_mandelbrot", args)
 	}
