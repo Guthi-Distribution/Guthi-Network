@@ -146,6 +146,7 @@ func PollMessagesFromDaemon(daemon DaemonHandle) {
 func SendFormattedMessage(dae DaemonHandle, format MsgFormat) bool {
 	// Allocate enough memory first
 	send_buf := make([]byte, format.Msg_len+8)
+	log.Printf("Test type: %d\n", format.Msg_type)
 	send_length := PrepareMessageForDaemon(send_buf, int16(format.Msg_type), format.Msg_content, int16(format.Msg_len))
 	C.PostMessageToDaemon(dae.handle, (*C.uchar)(unsafe.Pointer(&send_buf[0])), C.uint(send_length))
 	return true

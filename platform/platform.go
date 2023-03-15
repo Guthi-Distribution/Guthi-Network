@@ -183,6 +183,7 @@ func (self *NetworkPlatform) AddToPreviousNodes(addr string) {
 func (self *NetworkPlatform) AddNode(node NetworkNode) {
 	if !self.knows(node.Socket.String()) {
 		// TODO: Data race
+		log.Printf("Adding node: %s\n", node.Name)
 		self.Connected_nodes = append(self.Connected_nodes, node)
 		// when adding a node, create a cache entry too
 		self.Connection_caches = append(self.Connection_caches, CacheEntry{
@@ -551,6 +552,7 @@ func (net_platform *NetworkPlatform) TrackFile(filename string) {
 	}
 
 	file_name_bytes := []byte(filename)
-	message := daemon.BuildMessage(daemon.TrackThisFile, uint32(len(filename)), file_name_bytes)
+	log.Printf("Message type: %d\n", daemon.TrackThisFile)
+	message := daemon.BuildMessage(daemon.TrackThisFile, uint32(len(file_name_bytes)), file_name_bytes)
 	daemon.SendFormattedMessage(*net_platform.daemon_handle, message)
 }

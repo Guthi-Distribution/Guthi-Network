@@ -83,7 +83,7 @@ func HandleConnectionReply(request []byte, net_platform *NetworkPlatform) error 
 	SendTableToNode(net_platform, payload.AddrFrom)
 	if !payload.IsReply {
 		log.Println("Reply of a reply")
-		// then a reply is recieved, reply with the self node information
+		// then a reply  recieved, reply with the self node information
 		send_payload := ConnectionReply{
 			AddrFrom: net_platform.GetNodeAddress(),
 			Node:     *net_platform.Self_node,
