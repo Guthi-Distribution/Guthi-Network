@@ -2,7 +2,6 @@ package main
 
 import (
 	"GuthiNetwork/platform"
-	"encoding/gob"
 	"flag"
 	"fmt"
 	"sync"
@@ -37,28 +36,6 @@ func main() {
 	var sg sync.WaitGroup
 
 	sg.Add(1)
-	// c := Color{}
-
-	gob.Register(Color{})
-	gob.Register(MandelbrotParam{})
-
-	// net_platform.RegisterFunction(render_mandelbrot)
-	// net_platform.BindNodeFailureEventHandler(node_failure_handler)
-	// if *port == 6969 {
-	// 	net_platform.BindFunctionCompletionEventHandler("render_mandelbrot", plot_mandelbrot)
-	// 	curr_time := time.Now().UnixMilli()
-	// 	net_platform.CreateArray("mandelbrot", width*height, c)
-	// 	fmt.Println(time.Now().UnixMilli() - curr_time)
-	// 	fmt.Println("Not Debugging process")
-
-	// 	args := []interface{}{
-	// 		MandelbrotParam{0, 0},
-	// 		MandelbrotParam{1, 0},
-	// 	}
-
-	// 	// time.Sleep(time.Second * 2)
-	// 	net_platform.DispatchFunction("render_mandelbrot", args)
-	// }
 
 	sg.Wait()
 }
