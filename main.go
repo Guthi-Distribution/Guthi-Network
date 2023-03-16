@@ -13,8 +13,8 @@ import (
 
 func main() {
 	count = 0
-	width = 512
-	height = 512
+	width = 256
+	height = 256
 	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
 	sum_type := flag.Int("range", 0, "Type of range")
 
