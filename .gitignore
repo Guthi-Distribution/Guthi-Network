@@ -20,3 +20,8 @@ config.json
 .fuse*
 Guthi-Core 
 img.png
+read_test.txt
+test.txt
+Guthi-Core
+mandelbrot_node_0.png
+*.png

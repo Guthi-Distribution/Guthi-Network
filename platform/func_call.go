@@ -10,12 +10,14 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
 // global store/map for storing function
 var globalFuncStore = make(map[string]interface{}, 100)
 var pending_function_dispatch []remoteFunctionInvoke
+var pending_dispatch_mutex sync.Mutex
 
 type FunctionInformation struct {
 	Key      string
@@ -208,13 +210,16 @@ func sendFunctionDispatch(func_name string, param interface{}, network_platform 
 func handleFunctionDispatch(data []byte, net_platform *NetworkPlatform) {
 	var payload functionDispatchInfo
 	gob.NewDecoder(bytes.NewReader(data)).Decode(&payload)
+	log.Println("received function dispatch")
 
 	for k, v := range globalFuncStore {
 		if k == payload.FuncName {
 			fValue := reflect.ValueOf(v)
 
+			log.Println("Calling Function")
 			var args []reflect.Value = make([]reflect.Value, 1)
 			args[0] = reflect.ValueOf(payload.Param)
+
 			fValue.Call(args)
 			time.Sleep(time.Second)
 
@@ -237,5 +242,15 @@ func handleFunctionCompletion(request []byte) {
 	if handler, exists := network_platform.function_completed[payload.FuncName]; exists {
 		log.Printf("Calling handler\n")
 		handler()
+	}
+}
+
+func dispatch_pending_call(addr string) {
+	net_platform := GetPlatform()
+
+	if len(pending_function_dispatch) > 0 {
+		dispatch_info := pending_function_dispatch[0]
+		pending_function_dispatch = pending_function_dispatch[1:]
+		net_platform.CallFunction(dispatch_info.FName, dispatch_info.Value, addr)
 	}
 }

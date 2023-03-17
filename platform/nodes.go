@@ -116,7 +116,7 @@ func HandleNodeResponse(request []byte, net_platform *NetworkPlatform) {
 
 /*
 Wrapper function for all the handling of various request and response
-first 32 bytes command, rest payload
+first 32 bytes commandf, rest payload
 */
 func handleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 
@@ -192,7 +192,6 @@ func handleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 		break
 
 	case "indexed_array":
-		log.Printf("Command: %s\n", command)
 		HandleReceiveIndexedArray(request[COMMAND_LENGTH:], net_platform)
 		break
 
@@ -264,7 +263,7 @@ func ListenForTCPConnection(net_platform *NetworkPlatform) {
 	// The call to listen always blocks
 	// There's no way to get notified when there is a pending connection in Go?
 	log.Printf("Localhost is listening ... \n")
-	// go RequestInfomation(net_platform)
+	go RequestInfomation(net_platform)
 	// go CommunicateFileSystem(net_platform)
 	go Synchronize(net_platform)
 	for {

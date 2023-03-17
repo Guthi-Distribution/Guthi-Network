@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 )
 
 /*
@@ -64,6 +65,10 @@ func HandleConnectionInitiation(request []byte, net_platform *NetworkPlatform) e
 		log.Printf("Connection initiation error: %s\n", err)
 		return err
 	}
+	SendTableToNode(net_platform, payload.AddrFrom)
+	time.Sleep(time.Second * 1)
+
+	dispatch_pending_call(payload.AddrFrom)
 	return nil
 }
 

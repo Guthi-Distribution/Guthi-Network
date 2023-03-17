@@ -267,11 +267,15 @@ func HandleReceiveSymbolTable(request []byte, net_platform *NetworkPlatform) err
 	fmt.Printf("INFO: Table Size: %d\n", len(payload.Table))
 
 	for id, value := range payload.Table {
-		if _, found := net_platform.symbol_table[id]; found {
-			if net_platform.symbol_table[id].Timestamp.Before(value.Timestamp) {
-				err = SendVariableToNodes(net_platform.symbol_table[id], net_platform)
+		net_platform.symbol_table_mutex.RLock()
+		value_node, found := net_platform.symbol_table[id]
+		net_platform.symbol_table_mutex.RUnlock()
+		if found {
+			if value_node.Timestamp.Before(value.Timestamp) {
+				err = SendVariableToNodes(value_node, net_platform)
 				continue
 			}
+			value_node.SetVariable(value)
 		}
 		value.SetValid(true)
 		// value.SetSourceNode(payload.AddrFrom)
@@ -281,7 +285,7 @@ func HandleReceiveSymbolTable(request []byte, net_platform *NetworkPlatform) err
 
 	}
 
-	sendTableReceiveAcknowledgement(net_platform, payload.AddrFrom)
+	// sendTableReceiveAcknowledgement(net_platform, payload.AddrFrom)
 
 	return err
 }
@@ -300,13 +304,7 @@ func handleReceiveSymbolTableAck(request []byte, net_platform *NetworkPlatform) 
 	if err != nil {
 		return errors.New(fmt.Sprintf("Gob decoder error:%s", err))
 	}
-	// node := net_platform.get_node_from_string(payload.AddrFrom)
-
-	if len(pending_function_dispatch) > 0 {
-		dispatch_info := pending_function_dispatch[0]
-		pending_function_dispatch = pending_function_dispatch[1:]
-		net_platform.CallFunction(dispatch_info.FName, dispatch_info.Value, payload.AddrFrom)
-	}
+	dispatch_pending_call(payload.AddrFrom)
 
 	return err
 }
