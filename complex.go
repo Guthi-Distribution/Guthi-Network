@@ -1,8 +1,6 @@
 package main
 
 import (
-	"GuthiNetwork/platform"
-	"GuthiNetwork/utility"
 	"fmt"
 	"image"
 	"image/color"
@@ -11,6 +9,9 @@ import (
 	"math"
 	"os"
 	"time"
+
+	"github.com/Guthi/guthi_network/platform"
+	"github.com/Guthi/guthi_network/utility"
 )
 
 var width int
