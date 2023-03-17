@@ -3,6 +3,7 @@ package main
 // There should be one univeral listening port
 
 import (
+	"GuthiNetwork/api"
 	"GuthiNetwork/platform"
 	"encoding/gob"
 	"flag"
@@ -31,6 +32,7 @@ func main() {
 		net_platform.ConnectToNode("127.0.0.1:6969") // one of the way to connect to a particular node, request all the nodes information it has
 	}
 	go platform.ListenForTCPConnection(net_platform)
+	go api.StartServer(net_platform)
 
 	var sg sync.WaitGroup
 	sg.Add(1)
