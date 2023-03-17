@@ -331,7 +331,8 @@ func (net_platform *NetworkPlatform) CreateOrSetValue(id string, data any) error
 }
 
 func (net_platform *NetworkPlatform) SetValue(id string, _value *lib.Variable) error {
-	net_platform.symbol_table_mutex.RLock()
+	net_platform.symbol_table_mutex.Lock()
+
 	value := net_platform.symbol_table[lib.GetHashValue(id)]
 	net_platform.symbol_table_mutex.RUnlock()
 	value.SetVariable(_value)
@@ -354,19 +355,19 @@ func (net_platform *NetworkPlatform) setReceivedValue(id uint32, _value *lib.Var
 }
 
 func (net_platform *NetworkPlatform) SetData(id string, data interface{}) error {
-	net_platform.symbol_table_mutex.RLock()
+	net_platform.symbol_table_mutex.Lock()
 	value := net_platform.symbol_table[lib.GetHashValue(id)]
 	value.SetValue(data)
-	net_platform.symbol_table_mutex.RUnlock()
+	net_platform.symbol_table_mutex.Unlock()
 
 	sendVariableInvalidation(value, net_platform)
 	return nil
 }
 
 func (net_platform *NetworkPlatform) GetValue(id string) (*lib.Variable, error) {
-	net_platform.symbol_table_mutex.RLock()
+	net_platform.symbol_table_mutex.Lock()
 	value, exists := net_platform.symbol_table[lib.GetHashValue(id)]
-	net_platform.symbol_table_mutex.RUnlock()
+	net_platform.symbol_table_mutex.Unlock()
 	if !exists {
 		return nil, errors.New(fmt.Sprintf("Variable %s not found", id))
 	}
