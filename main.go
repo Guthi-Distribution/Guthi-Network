@@ -3,7 +3,6 @@ package main
 // There should be one univeral listening port
 
 import (
-	"GuthiNetwork/platform"
 	"encoding/gob"
 	"flag"
 	"fmt"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Guthi/guthi_network/api"
+	"github.com/Guthi/guthi_network/platform"
 )
 
 func main() {

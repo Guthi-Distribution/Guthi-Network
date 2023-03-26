@@ -1,11 +1,12 @@
 package platform
 
 import (
-	"GuthiNetwork/utility"
 	"bytes"
 	"encoding/gob"
 	"fmt"
 	"sync"
+
+	"github.com/Guthi/guthi_network/utility"
 )
 
 var site_mutex sync.Mutex

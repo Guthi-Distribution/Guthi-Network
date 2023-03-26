@@ -1,9 +1,10 @@
 package platform
 
 import (
-	"GuthiNetwork/core"
-	"GuthiNetwork/events"
 	"time"
+
+	"github.com/Guthi/guthi_network/core"
+	"github.com/Guthi/guthi_network/events"
 )
 
 // Implement a event queue here

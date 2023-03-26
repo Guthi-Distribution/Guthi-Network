@@ -1,12 +1,13 @@
 package platform
 
 import (
-	"GuthiNetwork/core"
 	"bytes"
 	"encoding/gob"
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/Guthi/guthi_network/core"
 )
 
 /*

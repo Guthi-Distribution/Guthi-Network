@@ -1,8 +1,9 @@
 package core
 
 import (
-	"GuthiNetwork/shm"
 	"fmt"
+
+	"github.com/Guthi/guthi_network/shm"
 )
 
 /*

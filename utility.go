@@ -1,12 +1,13 @@
 package main
 
 import (
-	"GuthiNetwork/platform"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"time"
+
+	"github.com/Guthi/guthi_network/platform"
 )
 
 type Config struct {

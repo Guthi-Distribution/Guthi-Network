@@ -1,8 +1,6 @@
 package platform
 
 import (
-	"GuthiNetwork/core"
-	"GuthiNetwork/lib"
 	"bytes"
 	"encoding/gob"
 	"errors"
@@ -11,6 +9,9 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/Guthi/guthi_network/core"
+	"github.com/Guthi/guthi_network/lib"
 )
 
 type NodeFailureEventHandler func(NetworkNode) // interface so that use can pass it's own structures
