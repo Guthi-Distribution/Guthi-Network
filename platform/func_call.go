@@ -39,8 +39,10 @@ type remoteFunctionInvoke struct {
 }
 
 type function_execution_completed struct {
-	AddrFrom string
-	FuncName string
+	AddrFrom    string
+	FuncName    string
+	Param       interface{}
+	ReturnValue interface{}
 }
 
 func GetFunctionName(temp interface{}) string {
@@ -88,7 +90,6 @@ func CallInterfaceFunction(inArgs GobEncodedBytes) GobEncodedBytes {
 		if k == remoteData.FName {
 			fType := reflect.TypeOf(v)
 			inArgsCount := fType.NumIn()
-			// outArgsCount := fType.NumOut()
 			fValue := reflect.ValueOf(v)
 
 			if inArgsCount != 1 {
@@ -108,13 +109,19 @@ func CallInterfaceFunction(inArgs GobEncodedBytes) GobEncodedBytes {
 			}
 
 			var in []reflect.Value = make([]reflect.Value, inArgsCount)
-			// var out []reflect.Value = make([]reflect.Value, outArgsCount)
 
 			in[0] = reflect.ValueOf(remoteData.Value)
-			fValue.Call(in)
-			if handler, exists := network_platform.function_completed[remoteData.FName]; exists {
-				handler()
+			out := fValue.Call(in)
+			var return_value interface{}
+			return_value = nil
+			if len(out) != 0 {
+				return_value = out[0].Interface()
 			}
+			if handler, exists := network_platform.function_completed[remoteData.FName]; exists {
+				handler(remoteData.FName, in[0], return_value)
+			}
+
+			out = nil
 		}
 	}
 	return nil
@@ -220,12 +227,22 @@ func handleFunctionDispatch(data []byte, net_platform *NetworkPlatform) {
 			var args []reflect.Value = make([]reflect.Value, 1)
 			args[0] = reflect.ValueOf(payload.Param)
 
-			fValue.Call(args)
+			out := fValue.Call(args)
 			time.Sleep(time.Second)
+
+			var return_value interface{}
+			return_value = nil
+			if len(out) != 0 {
+				return_value = out[0].Interface()
+			}
+
+			out = nil
 
 			payload := function_execution_completed{
 				network_platform.Self_node.GetAddressString(),
 				payload.FuncName,
+				args[0].Interface(),
+				return_value,
 			}
 			data := append(CommandStringToBytes("func_completed"), GobEncode(payload)...)
 			for i := range network_platform.Connected_nodes {
@@ -241,7 +258,7 @@ func handleFunctionCompletion(request []byte) {
 	log.Printf("Received completion status\n")
 	if handler, exists := network_platform.function_completed[payload.FuncName]; exists {
 		log.Printf("Calling handler\n")
-		handler()
+		handler(payload.FuncName, payload.Param, payload.ReturnValue)
 	}
 }
 

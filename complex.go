@@ -70,7 +70,7 @@ func does_diverge(c *Complex, radius float64, max_iter int) int {
 	return iter
 }
 
-func plot_mandelbrot() {
+func plot_mandelbrot(func_name string, pram interface{}, return_value interface{}) {
 	net_platform := platform.GetPlatform()
 	count++
 	if count == 2 {
