@@ -11,12 +11,15 @@ import (
 
 	"github.com/Guthi/guthi_network/api"
 	"github.com/Guthi/guthi_network/platform"
+	"github.com/Guthi/guthi_network/utility"
 )
+
+var start_time time.Time
 
 func main() {
 	count = 0
-	width = 64
-	height = 64
+	width = 512
+	height = 512
 	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
 	sum_type := flag.Int("range", 0, "Type of range")
 
@@ -24,8 +27,9 @@ func main() {
 	range_number = *sum_type
 	fmt.Println(range_number, *sum_type)
 
-	config := LoadConfiguration("config.json")
-	net_platform, err := platform.CreateNetworkPlatform(config.Name, config.Address, *port)
+	config := utility.LoadConfiguration("config.json")
+	config.Port = *port
+	net_platform, err := platform.CreateNetworkPlatform(config)
 	if err != nil {
 		panic(err)
 	}
@@ -44,6 +48,7 @@ func main() {
 
 	net_platform.RegisterFunction(render_mandelbrot)
 	net_platform.BindNodeFailureEventHandler(node_failure_handler)
+	start_time = time.Now()
 	if *port == 6969 {
 		net_platform.BindFunctionCompletionEventHandler("render_mandelbrot", plot_mandelbrot)
 		curr_time := time.Now().UnixMilli()

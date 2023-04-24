@@ -21,6 +21,11 @@ type NodesMessage struct {
 	Nodes    []NetworkNode // array to make is generic
 }
 
+type NodesInfo struct {
+	AddrFrom string
+	Nodes    []string // array to make is generic
+}
+
 // payload to send when we will be sending the data
 type ConnectionRequest struct {
 	AddrFrom  string

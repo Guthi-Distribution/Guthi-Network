@@ -12,6 +12,7 @@ import (
 
 	"github.com/Guthi/guthi_network/core"
 	"github.com/Guthi/guthi_network/lib"
+	"github.com/Guthi/guthi_network/utility"
 )
 
 type NodeFailureEventHandler func(NetworkNode)                                 // interface so that use can pass it's own structures
@@ -85,6 +86,7 @@ type NetworkPlatform struct {
 	Connected_nodes    []NetworkNode `json:"connected_nodes"` // nodes that are connected right noe
 	Connection_History []string      `json:"history"`         // nodes information that are prevoisly connected
 	Connection_caches  []CacheEntry  `json:"cache_entry"`
+	config             utility.Config
 
 	symbol_table_mutex   sync.RWMutex
 	code_execution_mutex sync.Mutex
@@ -96,7 +98,7 @@ type NetworkPlatform struct {
 
 var network_platform *NetworkPlatform
 
-func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatform, error) {
+func CreateNetworkPlatform(config utility.Config) (*NetworkPlatform, error) {
 	// only one struct is possible, need only one value
 	if network_platform != nil {
 		return network_platform, nil
@@ -104,12 +106,12 @@ func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatf
 	network_platform = &NetworkPlatform{}
 
 	var err error
-	if address == "" {
-		address = "127.0.0.1"
-	} else if address == "f" {
-		address = GetNodeAddress()
+	if config.Address == "" {
+		config.Address = "127.0.0.1"
+	} else if config.Address == "f" {
+		config.Address = GetNodeAddress()
 	}
-	network_platform.Self_node, err = CreateNetworkNode(name, address, port)
+	network_platform.Self_node, err = CreateNetworkNode(config.Name, config.Address, config.Port)
 	network_platform.symbol_table = make(lib.SymbolTable)
 	network_platform.symbol_table_mutex = sync.RWMutex{}
 	network_platform.code_execution_mutex = sync.Mutex{}
@@ -223,6 +225,9 @@ func (self *NetworkPlatform) knows(addr string) bool {
 	return false
 }
 
+/*
+Return index of the node with address "addr"
+*/
 func (self *NetworkPlatform) get_node_from_string(addr string) int {
 	for i, node := range self.Connected_nodes {
 		if node.Socket.String() == addr {

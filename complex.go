@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"io/ioutil"
 	"log"
 	"math"
 	"os"
@@ -74,6 +75,9 @@ func plot_mandelbrot(func_name string, pram interface{}, return_value interface{
 	net_platform := platform.GetPlatform()
 	count++
 	if count == 2 {
+		curr_time := time.Now()
+		data := fmt.Sprintf("Total time needed: %d\n", curr_time.Sub(start_time).Milliseconds())
+		ioutil.WriteFile("result", []byte(data), 0644)
 		im := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{width, height}})
 		for i := 0; i < width; i++ {
 			for j := 0; j < height; j++ {
@@ -135,7 +139,6 @@ func render_mandelbrot(param MandelbrotParam) {
 		param.Row_completed = x
 		platform.SetState("render_mandelbrot", param)
 		fmt.Printf("Index completed: %d\n", x)
-		time.Sleep(time.Millisecond * 50)
 		platform.SendIndexedArray("mandelbrot", height*x, height, net_platform)
 	}
 	// platform.Send_array_to_nodes("mandelbrot", net_platform)
