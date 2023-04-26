@@ -1,8 +1,9 @@
 package core
 
 import (
-	"GuthiNetwork/shm"
 	"unsafe"
+
+	"github.com/Guthi/guthi_network/shm"
 )
 
 /*

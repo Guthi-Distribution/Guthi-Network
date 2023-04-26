@@ -20,8 +20,6 @@ var start_time time.Time
 
 func main() {
 	count = 0
-	width = 512
-	height = 512
 	port := flag.Int("port", 6969, "Port for the network") // send port using command line argument (-port 6969)
 	sum_type := flag.Int("range", 0, "Type of range")
 
@@ -57,7 +55,7 @@ func main() {
 		renderer.InitializeRenderer(int32(width), int32(height))
 		net_platform.BindFunctionCompletionEventHandler("render_mandelbrot", plot_mandelbrot)
 		curr_time := time.Now().UnixMilli()
-		net_platform.CreateArray("mandelbrot", width*height, c)
+		net_platform.CreateArray("mandelbrot", width*height*3, c)
 		fmt.Println(time.Now().UnixMilli() - curr_time)
 
 		args := []interface{}{}
@@ -69,8 +67,11 @@ func main() {
 		}
 
 		fmt.Println(args...)
-		// net_platform.DispatchFunction("render_mandelbrot", args)
+		net_platform.DispatchFunction("render_mandelbrot", args)
 	}
+
+	// Wait for rendering
+	renderer.PollEvents()
 
 	sg.Wait()
 }

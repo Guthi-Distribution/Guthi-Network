@@ -10,14 +10,13 @@ import (
 	"github.com/Guthi/guthi_network/utility"
 )
 
-var width int
-var height int
-
 var range_number int // 1 for 100 to 200 and false for 0 to 100
 var count int
 
 const (
 	block_size = 32
+	width      = 256
+	height     = 256
 )
 
 type MandelbrotParam struct {
@@ -91,15 +90,15 @@ func plot_mandelbrot(func_name string, pram interface{}, return_value interface{
 			renderer.PresentSurface()
 			renderer.PollSDLRenderer()
 		}
+		// fmt.Println()
 	}
-	fmt.Println("Callback function to plot mandelbrot was called")
+	// fmt.Println("Callback function to plot mandelbrot was called")
 }
 
 func render_mandelbrot(args_supplied interface{}) {
 	max_iter := 100
 	radius := 4.0
 
-	const block_size = 4
 	start := Complex{-2, -2}
 	end := Complex{1, 2}
 	net_platform := platform.GetPlatform()
@@ -123,15 +122,11 @@ func render_mandelbrot(args_supplied interface{}) {
 				log.Printf("Index: %d\n", width*x+y)
 				panic(err)
 			}
-
-			// renderer.UpdateTextureSurfaceOnePoint(int32(x), int32(y), byte(color.R), byte(color.G), byte(color.B))
 		}
 
-		platform.SetState("render_mandelbrot", param)
-		platform.SendIndexedArray("mandelbrot", height*x, block_size, net_platform)
+		// platform.SetState("render_mandelbrot", param)
+		// platform.SendIndexedArray("mandelbrot", height*x, block_size, net_platform)
 	}
 	// platform.Send_array_to_nodes("mandelbrot", net_platform)
 	fmt.Println("Completed : ", param.X, " and ", param.Y)
-	// renderer.PresentSurface()
-	// renderer.PollSDLRenderer()
 }

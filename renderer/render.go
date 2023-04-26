@@ -63,7 +63,7 @@ func PollEvents() {
 	g_window.Destroy()
 }
 
-func UpdateTextureSurfaceOnePoint(h int32, w int32, r byte, g byte, b byte) {
+func UpdateTextureSurfaceOnePoint(w int32, h int32, r byte, g byte, b byte) {
 	if g_texture == nil {
 		fmt.Println("Windows already destroyed")
 		os.Exit(-5)
@@ -139,7 +139,8 @@ func InitializeRenderer(width int32, height int32) {
 		os.Exit(-1)
 	}
 
-	go PollEvents()
+	//go PollEvents()
+	PollSDLRenderer()
 }
 
 func StreamMandelbrot() {
