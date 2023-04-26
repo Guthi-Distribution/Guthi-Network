@@ -90,6 +90,7 @@ type NetworkPlatform struct {
 
 	symbol_table_mutex   sync.RWMutex
 	code_execution_mutex sync.Mutex
+	function_state_mutex sync.RWMutex
 
 	// events
 	node_failure_event_handler NodeFailureEventHandler
@@ -260,6 +261,8 @@ func (net_platform *NetworkPlatform) bindFunctionState(node *NetworkNode, func_n
 		return errors.New(fmt.Sprintf("Function %s no registered\n", func_name))
 	}
 
+	net_platform.function_state_mutex.Lock()
+	defer net_platform.function_state_mutex.Unlock()
 	if node.function_state == nil {
 		node.function_state = make(map[string]interface{})
 	}
@@ -291,12 +294,14 @@ func handleFunctionState(request []byte) {
 	net_platform.bindFunctionState(&net_platform.Connected_nodes[node], payload.FuncName, payload.State)
 }
 
-func (net_platform *NetworkPlatform) GetFunctionState(node *NetworkNode, func_name string, state interface{}) error {
+func (net_platform *NetworkPlatform) SetFunctionState(node *NetworkNode, func_name string, state interface{}) error {
 	_, exists := globalFuncStore[func_name]
 	if !exists {
 		return errors.New(fmt.Sprintf("Function %s no registered\n", func_name))
 	}
 
+	net_platform.function_state_mutex.Lock()
+	defer net_platform.function_state_mutex.Unlock()
 	node.function_state[func_name] = state
 	return nil
 }

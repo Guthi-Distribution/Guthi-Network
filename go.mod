@@ -18,7 +18,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/sirupsen/logrus v1.9.0
-	golang.org/x/sys v0.6.0
+	golang.org/x/sys v0.7.1-0.20230425080706-6c5289959c98
 )
 
 require (

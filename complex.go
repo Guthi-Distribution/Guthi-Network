@@ -16,6 +16,10 @@ var height int
 var range_number int // 1 for 100 to 200 and false for 0 to 100
 var count int
 
+const (
+	block_size = 32
+)
+
 type MandelbrotParam struct {
 	// Provide 4 x 4 square box to render
 	X int
@@ -69,8 +73,12 @@ func does_diverge(c *Complex, radius float64, max_iter int) int {
 
 func plot_mandelbrot(func_name string, pram interface{}, return_value interface{}) {
 	net_platform := platform.GetPlatform()
-	for i := 0; i < width; i++ {
-		for j := 0; j < height; j++ {
+
+	params := pram.(MandelbrotParam)
+	fmt.Println("Returned across the function calls : X -> ", params.X, " Y -> ", params.Y)
+
+	for i := params.X; i < params.X+block_size; i++ {
+		for j := params.Y; j < params.Y+block_size; j++ {
 			c, err := net_platform.GetDataOfArray("mandelbrot", height*i+j)
 			if err != nil {
 				panic(err)
@@ -84,8 +92,6 @@ func plot_mandelbrot(func_name string, pram interface{}, return_value interface{
 			renderer.PollSDLRenderer()
 		}
 	}
-	params := pram.(MandelbrotParam)
-	fmt.Println("Returned across the function calls : X -> ", params.X, " Y -> ", params.Y)
 	fmt.Println("Callback function to plot mandelbrot was called")
 }
 
@@ -93,7 +99,7 @@ func render_mandelbrot(args_supplied interface{}) {
 	max_iter := 100
 	radius := 4.0
 
-	const block_size = 64
+	const block_size = 4
 	start := Complex{-2, -2}
 	end := Complex{1, 2}
 	net_platform := platform.GetPlatform()
@@ -122,7 +128,7 @@ func render_mandelbrot(args_supplied interface{}) {
 		}
 
 		platform.SetState("render_mandelbrot", param)
-		platform.SendIndexedArray("mandelbrot", height*x, 4, net_platform)
+		platform.SendIndexedArray("mandelbrot", height*x, block_size, net_platform)
 	}
 	// platform.Send_array_to_nodes("mandelbrot", net_platform)
 	fmt.Println("Completed : ", param.X, " and ", param.Y)

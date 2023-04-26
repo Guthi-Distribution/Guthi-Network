@@ -60,20 +60,16 @@ func main() {
 		net_platform.CreateArray("mandelbrot", width*height, c)
 		fmt.Println(time.Now().UnixMilli() - curr_time)
 
-		args := []interface{}{
-			// MandelbrotParam{0, 0},
-			// MandelbrotParam{1, 0},
-		}
+		args := []interface{}{}
 
-		for i := 0; i < width/64; i++ {
-			for j := 0; j < height/64; j++ {
-				args = append(args, MandelbrotParam{i * 4, j * 4})
+		for i := 0; i < width/block_size; i++ {
+			for j := 0; j < height/block_size; j++ {
+				args = append(args, MandelbrotParam{i * block_size, j * block_size})
 			}
 		}
-		// Increase this to give finer details
-		// time.Sleep(time.Second * 2)
+
 		fmt.Println(args...)
-		net_platform.DispatchFunction("render_mandelbrot", args)
+		// net_platform.DispatchFunction("render_mandelbrot", args)
 	}
 
 	sg.Wait()
