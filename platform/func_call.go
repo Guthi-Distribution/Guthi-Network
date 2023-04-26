@@ -37,8 +37,12 @@ type remoteFunctionInvoke struct {
 }
 
 type function_execution_completed struct {
+	// TODO :: Place information about args supplied and its return value
 	AddrFrom string
 	FuncName string
+	// Args with provided interface
+	// Return value
+	arguments interface{}
 }
 
 func GetFunctionName(temp interface{}) string {
@@ -111,7 +115,7 @@ func CallInterfaceFunction(inArgs GobEncodedBytes) GobEncodedBytes {
 			in[0] = reflect.ValueOf(remoteData.Value)
 			fValue.Call(in)
 			if handler, exists := network_platform.function_completed[remoteData.FName]; exists {
-				handler()
+				handler(in)
 			}
 		}
 	}
@@ -165,7 +169,7 @@ func (net_platform *NetworkPlatform) DispatchFunction(func_name string, args []i
 
 	go net_platform.CallFunction(func_name, args[0], "")
 
-	log.Println("Calling function")
+	fmt.Println("Calling function")
 	length := len(args)
 	args_index := 1
 	for index := range net_platform.Connected_nodes {
@@ -177,7 +181,7 @@ func (net_platform *NetworkPlatform) DispatchFunction(func_name string, args []i
 	}
 
 	for args_index < length {
-		log.Println("Adding to pending functio dipatch")
+		log.Println("Adding to pending function dispatch")
 		input := remoteFunctionInvoke{FName: func_name, Value: args[args_index]}
 		pending_function_dispatch = append(pending_function_dispatch, input)
 		args_index++
@@ -220,7 +224,7 @@ func handleFunctionDispatch(data []byte, net_platform *NetworkPlatform) {
 
 			payload := function_execution_completed{
 				network_platform.Self_node.GetAddressString(),
-				payload.FuncName,
+				payload.FuncName, payload.Param,
 			}
 			data := append(CommandStringToBytes("func_completed"), GobEncode(payload)...)
 			for i := range network_platform.Connected_nodes {
@@ -236,6 +240,6 @@ func handleFunctionCompletion(request []byte) {
 	log.Printf("Received completion status\n")
 	if handler, exists := network_platform.function_completed[payload.FuncName]; exists {
 		log.Printf("Calling handler\n")
-		handler()
+		handler(payload.arguments)
 	}
 }

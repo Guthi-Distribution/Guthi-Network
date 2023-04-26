@@ -56,6 +56,17 @@ func SetFileSystem(fs FilesystemCore) {
 	shared_memory.WriteSharedMemory([]byte(filesystem.Fs), MESSSAGE_FILESYSTEM)
 }
 
+func CreateFile(file_name string, contents string) {
+	file_name_C, file_name_size := C.CString(file_name), C.int(len(file_name))
+	contents_C, contents_size := C.CString(contents), C.int(len(contents))
+
+	// var ip [4]uint8
+	ip := make([]uint8, 4)
+	C.PrettyPrintFileSystem()
+	C.AddToFileCache(file_name_C, file_name_size, (*C.uchar)(&ip[0]), contents_C, contents_size)
+	C.PrettyPrintFileSystem()
+}
+
 // Runtime info structure
 // ------------------CPU----------------------
 type ProcessorInfo struct {

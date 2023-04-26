@@ -2,15 +2,11 @@ package main
 
 import (
 	"GuthiNetwork/platform"
+	renderer "GuthiNetwork/render"
 	"GuthiNetwork/utility"
 	"fmt"
-	"image"
-	"image/color"
-	"image/png"
 	"log"
 	"math"
-	"os"
-	"time"
 )
 
 var width int
@@ -20,8 +16,9 @@ var range_number int // 1 for 100 to 200 and false for 0 to 100
 var count int
 
 type MandelbrotParam struct {
-	Index         int
-	Row_completed int
+	// Provide 4 x 4 square box to render
+	X int
+	Y int
 }
 
 type Complex struct {
@@ -69,48 +66,65 @@ func does_diverge(c *Complex, radius float64, max_iter int) int {
 	return iter
 }
 
-func plot_mandelbrot() {
+func plot_mandelbrot(args_supplied interface{}) {
 	net_platform := platform.GetPlatform()
-	count++
-	if count == 2 {
-		im := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{width, height}})
-		for i := 0; i < width; i++ {
-			for j := 0; j < height; j++ {
-				c, err := net_platform.GetDataOfArray("mandelbrot", height*i+j)
-				if err != nil {
-					panic(err)
-				}
-				r := utility.Min(c.(Color).R*3, 255)
-				g := utility.Min(c.(Color).R*5, 255)
-				b := utility.Min(c.(Color).R*7, 255)
-				im.Set(i, j, color.RGBA{uint8(r), uint8(g), uint8(b), 255})
-			}
-			fmt.Printf("Index completed: %d\n", i)
-		}
+	// count++
+	// if count == 2 {
+	// 	im := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{width, height}})
+	// 	for i := 0; i < width; i++ {
+	// 		for j := 0; j < height; j++ {
+	// 			c, err := net_platform.GetDataOfArray("mandelbrot", height*i+j)
+	// 			if err != nil {
+	// 				panic(err)
+	// 			}
+	// 			r := utility.Min(c.(Color).R*3, 255)
+	// 			g := utility.Min(c.(Color).R*5, 255)
+	// 			b := utility.Min(c.(Color).R*7, 255)
+	// 			im.Set(i, j, color.RGBA{uint8(r), uint8(g), uint8(b), 255})
+	// 		}
+	// 	}
 
-		output, _ := os.Create("img.png")
-		png.Encode(output, im)
+	// 	output, _ := os.Create("img.png")
+	// 	png.Encode(output, im)
+	// }
+	for i := 0; i < width; i++ {
+		for j := 0; j < height; j++ {
+			c, err := net_platform.GetDataOfArray("mandelbrot", height*i+j)
+			if err != nil {
+				panic(err)
+			}
+			r := byte(utility.Min(c.(Color).R*3, 255))
+			g := byte(utility.Min(c.(Color).R*5, 255))
+			b := byte(utility.Min(c.(Color).R*7, 255))
+
+			renderer.UpdateTextureSurfaceOnePoint(int32(i), int32(j), r, g, b)
+			renderer.PresentSurface()
+			renderer.PollSDLRenderer()
+		}
 	}
+	// params := args_supplied.(MandelbrotParam)
+	// fmt.Println("Returned across the function calls : X -> ", params.X, " Y -> ", params.Y)
+	fmt.Println("Callback function to plot mandelbrot was called")
 }
 
-func render_mandelbrot(param MandelbrotParam) {
-	range_number := param.Index
-	diff := height / 2
-	min := 0 + range_number*diff
-	max := diff + range_number*diff
+func render_mandelbrot(args_supplied interface{}) {
 	max_iter := 100
 	radius := 4.0
 
-	fmt.Println(min, max)
+	const block_size = 4
 	start := Complex{-2, -2}
 	end := Complex{1, 2}
 	net_platform := platform.GetPlatform()
+	fparam := args_supplied.(MandelbrotParam) // the f**k is this syntax
+	fmt.Println(fparam)
+
+	param := MandelbrotParam{0, 0}
+
 	platform.SetState("render_mandelbrot", param)
 
-	start_index := param.Row_completed
-	for x := start_index; x < width; x++ {
+	for x := param.X; x < param.X+block_size; x++ {
 		real := start.real + (float64(x)/float64(width))*(end.real-start.real)
-		for y := min; y < max; y++ {
+		for y := param.Y; y < param.Y+block_size; y++ {
 			imag := start.imag + (float64(y)/float64(height))*(end.imag-start.imag)
 			z := Complex{real, imag}
 			n_iter := does_diverge(&z, radius, max_iter)
@@ -123,14 +137,15 @@ func render_mandelbrot(param MandelbrotParam) {
 				log.Printf("Index: %d\n", width*x+y)
 				panic(err)
 			}
+
+			renderer.UpdateTextureSurfaceOnePoint(int32(x), int32(y), byte(color.R), byte(color.G), byte(color.B))
 		}
 
-		param.Row_completed = x
 		platform.SetState("render_mandelbrot", param)
-		fmt.Printf("Index completed: %d\n", x)
-		time.Sleep(time.Millisecond * 10)
-		platform.SendIndexedArray("mandelbrot", height*x, height, net_platform)
+		platform.SendIndexedArray("mandelbrot", height*x, 4, net_platform)
 	}
 	// platform.Send_array_to_nodes("mandelbrot", net_platform)
-	fmt.Println("Completed")
+	fmt.Println("Completed : ", param.X, " and ", param.Y)
+	renderer.PresentSurface()
+	renderer.PollSDLRenderer()
 }

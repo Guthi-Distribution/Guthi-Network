@@ -4,6 +4,7 @@ package main
 
 import (
 	"GuthiNetwork/platform"
+	renderer "GuthiNetwork/render"
 	"encoding/gob"
 	"flag"
 	"fmt"
@@ -41,17 +42,26 @@ func main() {
 
 	net_platform.RegisterFunction(render_mandelbrot)
 	net_platform.BindNodeFailureEventHandler(node_failure_handler)
+
+	// Initialize the renderer
+	renderer.InitializeRenderer(int32(width), int32(height))
+
 	if *port == 6969 {
-		net_platform.BindFunctionCompletionEventHandler("render_mandelbrot", plot_mandelbrot)
+		net_platform.BindFunctionCompletionEventHandler("render_mandelbrot", render_mandelbrot)
 		curr_time := time.Now().UnixMilli()
 		net_platform.CreateArray("mandelbrot", width*height, c)
 		fmt.Println(time.Now().UnixMilli() - curr_time)
-		fmt.Println("Not Debugging process")
 
 		args := []interface{}{
 			MandelbrotParam{0, 0},
-			MandelbrotParam{1, 0},
 		}
+
+		// for i := 0; i < width/4; i++ {
+		// 	for j := 0; j < height/4; i++ {
+		// 		args = append(args, MandelbrotParam{i * 4, j * 4})
+		// 	}
+		// }
+		// Increase this to give finer details
 		// time.Sleep(time.Second * 2)
 		net_platform.DispatchFunction("render_mandelbrot", args)
 	}
