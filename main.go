@@ -52,10 +52,10 @@ func main() {
 
 	if *port == 6969 {
 		// Initialize the renderer
+		net_platform.CreateArray("mandelbrot", width*height*3, c)
 		renderer.InitializeRenderer(int32(width), int32(height))
 		net_platform.BindFunctionCompletionEventHandler("render_mandelbrot", plot_mandelbrot)
 		curr_time := time.Now().UnixMilli()
-		net_platform.CreateArray("mandelbrot", width*height*3, c)
 		fmt.Println(time.Now().UnixMilli() - curr_time)
 
 		args := []interface{}{}

@@ -58,6 +58,8 @@ func PollEvents() {
 				break
 			}
 		}
+
+		// g_renderer.Present()
 	}
 
 	g_window.Destroy()
@@ -97,11 +99,13 @@ func PresentSurface() { // pass here the array to be updated
 		log.Fatal(err)
 	}
 
-	if err := g_renderer.Copy(g_texture, nil, nil); err != nil {
+	err := g_renderer.Copy(g_texture, nil, nil)
+	if err != nil {
 		log.Fatal(err)
 	}
 
 	g_renderer.Present()
+	sdl.Delay(2)
 }
 
 func InitializeRenderer(width int32, height int32) {
@@ -136,14 +140,17 @@ func InitializeRenderer(width int32, height int32) {
 	g_texture, err = g_renderer.CreateTexture(sdl.PIXELFORMAT_RGB24, sdl.TEXTUREACCESS_STREAMING, width, height)
 
 	if err != nil {
-		os.Exit(-1)
+		log.Fatal(err)
 	}
 
-	//go PollEvents()
-	PollSDLRenderer()
+	go PollEvents()
+	// PollSDLRenderer()
 }
 
 func StreamMandelbrot() {
 	// net_platform := platform.GetPlatform()
 
+}
+
+func init() {
 }

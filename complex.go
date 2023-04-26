@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"sync"
 
 	"github.com/Guthi/guthi_network/platform"
 	"github.com/Guthi/guthi_network/renderer"
@@ -14,7 +15,7 @@ var range_number int // 1 for 100 to 200 and false for 0 to 100
 var count int
 
 const (
-	block_size = 32
+	block_size = 4
 	width      = 256
 	height     = 256
 )
@@ -70,12 +71,16 @@ func does_diverge(c *Complex, radius float64, max_iter int) int {
 	return iter
 }
 
+var present_mutex sync.Mutex
+
 func plot_mandelbrot(func_name string, pram interface{}, return_value interface{}) {
 	net_platform := platform.GetPlatform()
 
 	params := pram.(MandelbrotParam)
 	fmt.Println("Returned across the function calls : X -> ", params.X, " Y -> ", params.Y)
 
+	present_mutex.Lock()
+	defer present_mutex.Unlock()
 	for i := params.X; i < params.X+block_size; i++ {
 		for j := params.Y; j < params.Y+block_size; j++ {
 			c, err := net_platform.GetDataOfArray("mandelbrot", height*i+j)
@@ -87,11 +92,11 @@ func plot_mandelbrot(func_name string, pram interface{}, return_value interface{
 			b := byte(utility.Min(c.(Color).R*7, 255))
 
 			renderer.UpdateTextureSurfaceOnePoint(int32(i), int32(j), r, g, b)
-			renderer.PresentSurface()
-			renderer.PollSDLRenderer()
 		}
-		// fmt.Println()
 	}
+
+	renderer.PollSDLRenderer()
+	renderer.PresentSurface()
 	// fmt.Println("Callback function to plot mandelbrot was called")
 }
 
@@ -129,4 +134,8 @@ func render_mandelbrot(args_supplied interface{}) {
 	}
 	// platform.Send_array_to_nodes("mandelbrot", net_platform)
 	fmt.Println("Completed : ", param.X, " and ", param.Y)
+}
+
+func init() {
+	present_mutex = sync.Mutex{}
 }
