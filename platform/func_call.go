@@ -140,7 +140,6 @@ type function_dispatch_status struct {
 /*
 TODO:
   - Maybe, add each callback function for every function call
-  - Add CallId, so that we can even cache function call with same signature
 */
 func (net_platform *NetworkPlatform) CallFunction(func_name string, args interface{}, address string) {
 	input := remoteFunctionInvoke{FName: func_name, Value: args}
@@ -174,7 +173,7 @@ func (net_platform *NetworkPlatform) DispatchFunction(func_name string, args []i
 
 	go net_platform.CallFunction(func_name, args[0], "")
 
-	log.Println("Calling function")
+	fmt.Println("Calling function")
 	length := len(args)
 	args_index := 1
 	for index := range net_platform.Connected_nodes {
@@ -186,7 +185,6 @@ func (net_platform *NetworkPlatform) DispatchFunction(func_name string, args []i
 	}
 
 	for args_index < length {
-		log.Println("Adding to pending functio dipatch")
 		input := remoteFunctionInvoke{FName: func_name, Value: args[args_index]}
 		pending_function_dispatch = append(pending_function_dispatch, input)
 		args_index++
@@ -256,6 +254,7 @@ func handleFunctionCompletion(request []byte) {
 	var payload function_execution_completed
 	gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
 	log.Printf("Received completion status\n")
+	go dispatch_pending_call(payload.AddrFrom)
 	if handler, exists := network_platform.function_completed[payload.FuncName]; exists {
 		log.Printf("Calling handler\n")
 		handler(payload.FuncName, payload.Param, payload.ReturnValue)

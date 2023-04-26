@@ -15,8 +15,8 @@ import (
 	"github.com/Guthi/guthi_network/utility"
 )
 
-type NodeFailureEventHandler func(NetworkNode)                                 // interface so that use can pass it's own structures
-type FunctionExecutionCompletionHandler func(string, interface{}, interface{}) // interface so that use can pass it's own structures
+type NodeFailureEventHandler func(NetworkNode) // interface so that use can pass it's own structures
+type FunctionExecutionCompletionHandler func(string, interface{}, interface{})
 
 /*
 Site struct for suzuki kasami synchronization

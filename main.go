@@ -9,8 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Guthi/guthi_network/api"
 	"github.com/Guthi/guthi_network/platform"
+	"github.com/Guthi/guthi_network/renderer"
+
+	"github.com/Guthi/guthi_network/api"
 	"github.com/Guthi/guthi_network/utility"
 )
 
@@ -49,18 +51,28 @@ func main() {
 	net_platform.RegisterFunction(render_mandelbrot)
 	net_platform.BindNodeFailureEventHandler(node_failure_handler)
 	start_time = time.Now()
+
 	if *port == 6969 {
+		// Initialize the renderer
+		renderer.InitializeRenderer(int32(width), int32(height))
 		net_platform.BindFunctionCompletionEventHandler("render_mandelbrot", plot_mandelbrot)
 		curr_time := time.Now().UnixMilli()
 		net_platform.CreateArray("mandelbrot", width*height, c)
 		fmt.Println(time.Now().UnixMilli() - curr_time)
-		fmt.Println("Not Debugging process")
 
 		args := []interface{}{
-			MandelbrotParam{0, 0},
-			MandelbrotParam{1, 0},
+			// MandelbrotParam{0, 0},
+			// MandelbrotParam{1, 0},
 		}
+
+		for i := 0; i < width/64; i++ {
+			for j := 0; j < height/64; j++ {
+				args = append(args, MandelbrotParam{i * 4, j * 4})
+			}
+		}
+		// Increase this to give finer details
 		// time.Sleep(time.Second * 2)
+		fmt.Println(args...)
 		net_platform.DispatchFunction("render_mandelbrot", args)
 	}
 
