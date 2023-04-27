@@ -50,6 +50,7 @@ func main() {
 	net_platform.BindNodeFailureEventHandler(node_failure_handler)
 	start_time = time.Now()
 
+	count = 6
 	if *port == 6969 {
 		// Initialize the renderer
 		net_platform.CreateArray("mandelbrot", width*height*3, c)
@@ -66,6 +67,14 @@ func main() {
 			}
 		}
 
+		for true {
+			if len(net_platform.Connected_nodes) == count {
+				break
+			}
+		}
+		time.Sleep(time.Second * 2)
+
+		platform.Start_time = time.Now()
 		fmt.Println(args...)
 		net_platform.DispatchFunction("render_mandelbrot", args)
 	}

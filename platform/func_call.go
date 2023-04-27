@@ -254,7 +254,7 @@ func handleFunctionDispatch(data []byte, net_platform *NetworkPlatform) {
 			args[0] = reflect.ValueOf(payload.Param)
 
 			out := fValue.Call(args)
-			time.Sleep(time.Second)
+			// time.Sleep(time.Second)
 
 			var return_value interface{}
 			return_value = nil
@@ -289,6 +289,8 @@ func handleFunctionCompletion(request []byte) {
 	}
 }
 
+var Start_time time.Time
+
 func dispatch_pending_call(addr string) {
 	net_platform := GetPlatform()
 
@@ -299,5 +301,6 @@ func dispatch_pending_call(addr string) {
 		net_platform.CallFunction(dispatch_info.FName, dispatch_info.Value, addr)
 	} else {
 		log.Println("No pending function")
+		log.Println(time.Now().Sub(Start_time).Seconds())
 	}
 }

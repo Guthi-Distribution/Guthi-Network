@@ -107,7 +107,7 @@ func render_mandelbrot(args_supplied interface{}) {
 	start := Complex{-2, -2}
 	end := Complex{1, 2}
 	net_platform := platform.GetPlatform()
-	param := args_supplied.(MandelbrotParam) // the f**k is this syntax
+	param := args_supplied.(MandelbrotParam)
 	fmt.Println(param)
 
 	platform.SetState("render_mandelbrot", param)
