@@ -15,7 +15,7 @@ var range_number int // 1 for 100 to 200 and false for 0 to 100
 var count int
 
 const (
-	block_size = 4
+	block_size = 8
 	width      = 256
 	height     = 256
 )
@@ -107,6 +107,10 @@ func render_mandelbrot(args_supplied interface{}) {
 	start := Complex{-2, -2}
 	end := Complex{1, 2}
 	net_platform := platform.GetPlatform()
+	filter := uint16(1)
+	if net_platform.Self_node.Socket.Port != 6969 {
+		filter = 2
+	}
 	param := args_supplied.(MandelbrotParam) // the f**k is this syntax
 	fmt.Println(param)
 
@@ -120,7 +124,11 @@ func render_mandelbrot(args_supplied interface{}) {
 			n_iter := does_diverge(&z, radius, max_iter)
 
 			color_element := uint16(utility.Min((float64(n_iter)-math.Log2(z.absolute()/float64(radius)))/float64(max_iter)*255, 255.0))
-			color := Color{color_element, utility.Min(255, color_element*2), utility.Min(255, color_element*3)}
+			color := Color{
+				color_element * filter,
+				utility.Min(255, color_element*2/filter),
+				utility.Min(255, color_element*3),
+			}
 			err := net_platform.SetDataOfArray("mandelbrot", height*x+y, color)
 
 			if err != nil {

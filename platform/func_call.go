@@ -212,6 +212,7 @@ func (net_platform *NetworkPlatform) DispatchFunction(func_name string, args []i
 	}
 
 	// add all the pending function call
+
 	for args_index < length {
 		input := remoteFunctionInvoke{FName: func_name, Value: args[args_index]}
 		pending_function_dispatch = append(pending_function_dispatch, input)
@@ -220,6 +221,7 @@ func (net_platform *NetworkPlatform) DispatchFunction(func_name string, args []i
 }
 
 func AddPendingDispatch(func_name string, param interface{}) {
+
 	input := remoteFunctionInvoke{FName: func_name, Value: param}
 	pending_function_dispatch = append(pending_function_dispatch, input)
 }
@@ -292,7 +294,8 @@ func handleFunctionCompletion(request []byte) {
 func dispatch_pending_call(addr string) {
 	net_platform := GetPlatform()
 
-	if len(pending_function_dispatch) > 0 {
+	length := len(pending_function_dispatch)
+	if length > 0 {
 		log.Println("Calling pending function")
 		dispatch_info := pending_function_dispatch[0]
 		pending_function_dispatch = pending_function_dispatch[1:]
