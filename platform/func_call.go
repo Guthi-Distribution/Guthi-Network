@@ -221,9 +221,10 @@ func (net_platform *NetworkPlatform) DispatchFunction(func_name string, args []i
 }
 
 func AddPendingDispatch(func_name string, param interface{}) {
-
 	input := remoteFunctionInvoke{FName: func_name, Value: param}
+	pending_dispatch_mutex.Lock()
 	pending_function_dispatch = append(pending_function_dispatch, input)
+	pending_dispatch_mutex.Unlock()
 }
 
 type functionDispatchInfo struct {
@@ -296,14 +297,18 @@ var Start_time time.Time
 func dispatch_pending_call(addr string) {
 	net_platform := GetPlatform()
 
+	pending_dispatch_mutex.Lock()
 	length := len(pending_function_dispatch)
 	if length > 0 {
 		log.Println("Calling pending function")
 		dispatch_info := pending_function_dispatch[0]
 		pending_function_dispatch = pending_function_dispatch[1:]
+		pending_dispatch_mutex.Unlock()
 		net_platform.CallFunction(dispatch_info.FName, dispatch_info.Value, addr)
+		return
 	} else {
 		log.Println("No pending function")
 		log.Println(time.Now().Sub(Start_time).Seconds())
 	}
+	pending_dispatch_mutex.Unlock()
 }

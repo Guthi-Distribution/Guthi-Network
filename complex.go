@@ -15,9 +15,9 @@ var range_number int // 1 for 100 to 200 and false for 0 to 100
 var count int
 
 const (
-	block_size = 8
+	block_size = 16
 	width      = 256
-	height     = 256
+	height     = width
 )
 
 type MandelbrotParam struct {

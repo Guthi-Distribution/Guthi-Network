@@ -81,8 +81,8 @@ func HandleReceiveMemoryInformation(request []byte, net_platfom *NetworkPlatform
 		return errors.New(fmt.Sprintf("Gob decoder error:%s", err))
 	}
 
-	node_index := net_platfom.get_node_from_string(payload.AddrFrom)
-	if node_index < 0 {
+	node_index := net_platfom.get_cache_from_string(payload.AddrFrom)
+	if node_index < 0 || len(net_platfom.Connection_caches) < node_index {
 		//TODO: handle if the node information is not available, it can happen if the node is removed
 		return nil
 	}

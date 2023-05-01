@@ -238,6 +238,15 @@ func (self *NetworkPlatform) get_node_from_string(addr string) int {
 	return -1
 }
 
+func (self *NetworkPlatform) get_cache_from_string(addr string) int {
+	for i, node := range self.Connection_caches {
+		if node.Node_ref.GetAddressString() == addr {
+			return i
+		}
+	}
+	return -1
+}
+
 /*
 ----------------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------------
