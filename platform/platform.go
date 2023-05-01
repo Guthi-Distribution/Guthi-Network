@@ -147,6 +147,9 @@ func (net_platform *NetworkPlatform) BindNodeFailureEventHandler(handler NodeFai
 	net_platform.node_failure_event_handler = handler
 }
 
+/*
+Binds handler as a function completion handler for function name "func_name"
+*/
 func (net_platform *NetworkPlatform) BindFunctionCompletionEventHandler(func_name string, handler FunctionExecutionCompletionHandler) {
 	net_platform.function_completed[func_name] = handler
 }

@@ -16,7 +16,7 @@ var count int
 
 const (
 	block_size = 16
-	width      = 256
+	width      = 512
 	height     = width
 )
 
