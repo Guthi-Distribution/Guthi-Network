@@ -59,6 +59,8 @@ func PollEvents() {
 				break
 			}
 		}
+
+		// g_renderer.Present()
 	}
 
 	g_window.Destroy()
@@ -166,7 +168,7 @@ func InitializeRenderer(width int32, height int32) {
 	// g_texture, err = g_renderer.CreateTexture(sdl.PIXELFORMAT_RGB24, sdl.TEXTUREACCESS_STREAMING, width, height)
 
 	if err != nil {
-		os.Exit(-1)
+		log.Fatal(err)
 	}
 
 	PresentSurface()
@@ -176,4 +178,7 @@ func InitializeRenderer(width int32, height int32) {
 func StreamMandelbrot() {
 	// net_platform := platform.GetPlatform()
 
+}
+
+func init() {
 }

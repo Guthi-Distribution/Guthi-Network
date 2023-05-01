@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"sync"
 
 	"github.com/Guthi/guthi_network/platform"
 	"github.com/Guthi/guthi_network/renderer"
@@ -70,12 +71,16 @@ func does_diverge(c *Complex, radius float64, max_iter int) int {
 	return iter
 }
 
+var present_mutex sync.Mutex
+
 func plot_mandelbrot(func_name string, pram interface{}, return_value interface{}) {
 	net_platform := platform.GetPlatform()
 
 	params := pram.(MandelbrotParam)
 	fmt.Println("Returned across the function calls : X -> ", params.X, " Y -> ", params.Y)
 
+	present_mutex.Lock()
+	defer present_mutex.Unlock()
 	for i := params.X; i < params.X+block_size; i++ {
 		for j := params.Y; j < params.Y+block_size; j++ {
 			c, err := net_platform.GetDataOfArray("mandelbrot", height*i+j)
@@ -90,8 +95,10 @@ func plot_mandelbrot(func_name string, pram interface{}, return_value interface{
 			renderer.PresentSurface()
 			renderer.PollSDLRenderer()
 		}
-		// fmt.Println()
 	}
+
+	renderer.PollSDLRenderer()
+	renderer.PresentSurface()
 	// fmt.Println("Callback function to plot mandelbrot was called")
 }
 
@@ -102,6 +109,10 @@ func render_mandelbrot(args_supplied interface{}) {
 	start := Complex{-2, -2}
 	end := Complex{1, 2}
 	net_platform := platform.GetPlatform()
+	filter := uint16(1)
+	if net_platform.Self_node.Socket.Port != 6969 {
+		filter = 2
+	}
 	param := args_supplied.(MandelbrotParam) // the f**k is this syntax
 	fmt.Println(param)
 
@@ -115,7 +126,11 @@ func render_mandelbrot(args_supplied interface{}) {
 			n_iter := does_diverge(&z, radius, max_iter)
 
 			color_element := uint16(utility.Min((float64(n_iter)-math.Log2(z.absolute()/float64(radius)))/float64(max_iter)*255, 255.0))
-			color := Color{color_element, utility.Min(255, color_element*3), utility.Min(255, color_element*5)}
+			color := Color{
+				color_element * filter,
+				utility.Min(255, color_element*2/filter),
+				utility.Min(255, color_element*3),
+			}
 			err := net_platform.SetDataOfArray("mandelbrot", height*x+y, color)
 
 			if err != nil {
@@ -129,4 +144,8 @@ func render_mandelbrot(args_supplied interface{}) {
 	}
 	// platform.Send_array_to_nodes("mandelbrot", net_platform)
 	fmt.Println("Completed : ", param.X, " and ", param.Y)
+}
+
+func init() {
+	present_mutex = sync.Mutex{}
 }
