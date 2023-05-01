@@ -33,9 +33,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	// if /*net_platform.Self_node.Socket.Port != 6969*/ true {
+	// 	net_platform.ConnectToNode("192.168.101.18:6969") // one of the way to connect to a particular node, request all the nodes information it has
+	// }
 	if net_platform.Self_node.Socket.Port != 6969 {
 		net_platform.ConnectToNode("127.0.0.1:6969") // one of the way to connect to a particular node, request all the nodes information it has
 	}
+
 	go platform.ListenForTCPConnection(net_platform)
 	go api.StartServer(net_platform)
 
@@ -50,7 +54,7 @@ func main() {
 	net_platform.BindNodeFailureEventHandler(node_failure_handler)
 	start_time = time.Now()
 
-	if *port == 6969 {
+	if net_platform.Self_node.Socket.Port == 6969 {
 		// Initialize the renderer
 		renderer.InitializeRenderer(int32(width), int32(height))
 		net_platform.BindFunctionCompletionEventHandler("render_mandelbrot", plot_mandelbrot)
@@ -72,6 +76,5 @@ func main() {
 
 	// Wait for rendering
 	renderer.PollEvents()
-
 	sg.Wait()
 }

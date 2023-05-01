@@ -15,8 +15,8 @@ var count int
 
 const (
 	block_size = 32
-	width      = 256
-	height     = 256
+	width      = 512
+	height     = 512
 )
 
 type MandelbrotParam struct {
@@ -86,7 +86,7 @@ func plot_mandelbrot(func_name string, pram interface{}, return_value interface{
 			g := byte(utility.Min(c.(Color).R*5, 255))
 			b := byte(utility.Min(c.(Color).R*7, 255))
 
-			renderer.UpdateTextureSurfaceOnePoint(int32(i), int32(j), r, g, b)
+			renderer.UpdateSurfaceDirectlyOnePoint(int32(i), int32(j), r, g, b)
 			renderer.PresentSurface()
 			renderer.PollSDLRenderer()
 		}
@@ -115,7 +115,7 @@ func render_mandelbrot(args_supplied interface{}) {
 			n_iter := does_diverge(&z, radius, max_iter)
 
 			color_element := uint16(utility.Min((float64(n_iter)-math.Log2(z.absolute()/float64(radius)))/float64(max_iter)*255, 255.0))
-			color := Color{color_element, utility.Min(255, color_element*2), utility.Min(255, color_element*3)}
+			color := Color{color_element, utility.Min(255, color_element*3), utility.Min(255, color_element*5)}
 			err := net_platform.SetDataOfArray("mandelbrot", height*x+y, color)
 
 			if err != nil {
