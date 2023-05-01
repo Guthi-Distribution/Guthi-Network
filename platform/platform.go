@@ -531,6 +531,7 @@ func init() {
 	gob.Register(array{})
 	gob.Register(VariableInfo{})
 	pending_dispatch_mutex = sync.Mutex{}
+	pending_connection_time_mutex = sync.RWMutex{}
 }
 
 /*

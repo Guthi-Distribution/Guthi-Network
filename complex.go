@@ -16,8 +16,8 @@ var count int
 
 const (
 	block_size = 8
-	width      = 256
-	height     = 256
+	width      = 512
+	height     = 512
 )
 
 type MandelbrotParam struct {
