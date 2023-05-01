@@ -13,9 +13,10 @@ import (
 
 var range_number int // 1 for 100 to 200 and false for 0 to 100
 var count int
+var present_mutex sync.Mutex
 
 const (
-	block_size = 16
+	block_size = 8
 	width      = 512
 	height     = width
 )
@@ -71,8 +72,6 @@ func does_diverge(c *Complex, radius float64, max_iter int) int {
 	return iter
 }
 
-var present_mutex sync.Mutex
-
 func plot_mandelbrot(func_name string, pram interface{}, return_value interface{}) {
 	net_platform := platform.GetPlatform()
 
@@ -91,7 +90,8 @@ func plot_mandelbrot(func_name string, pram interface{}, return_value interface{
 			g := byte(utility.Min(c.(Color).R*5, 255))
 			b := byte(utility.Min(c.(Color).R*7, 255))
 
-			renderer.UpdateTextureSurfaceOnePoint(int32(i), int32(j), r, g, b)
+			renderer.UpdateSurfaceDirectlyOnePoint(int32(i), int32(j), r, g, b)
+
 		}
 	}
 
@@ -125,7 +125,7 @@ func render_mandelbrot(args_supplied interface{}) {
 
 			color_element := uint16(utility.Min((float64(n_iter)-math.Log2(z.absolute()/float64(radius)))/float64(max_iter)*255, 255.0))
 			color := Color{
-				color_element * filter,
+				color_element,
 				utility.Min(255, color_element*2/filter),
 				utility.Min(255, color_element*3),
 			}

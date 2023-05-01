@@ -28,6 +28,7 @@ func DrawCheckedTexture(array []byte, comp int, pitch int) {
 var g_renderer *sdl.Renderer
 var g_window *sdl.Window
 var g_texture *sdl.Texture
+var g_surface *sdl.Surface
 
 // update the line at that with arr of bytes
 // the format of the supplied data must match
@@ -84,6 +85,34 @@ func UpdateTextureSurfaceOnePoint(w int32, h int32, r byte, g byte, b byte) {
 	g_texture.Unlock()
 }
 
+func UpdateSurfaceDirectlyOnePoint(w int32, h int32, r byte, g byte, b byte) {
+
+	var err error
+	g_surface, err = g_window.GetSurface()
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(-5)
+	}
+	err = g_surface.Lock()
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(-9)
+	}
+
+	byte_array := g_surface.Pixels()
+	const gap = 25
+
+	pitch := 512 * 4
+
+	offset := byte_array[h*int32(pitch)+w*4:]
+	offset[0] = r
+	offset[1] = g
+	offset[2] = b
+
+	g_surface.Unlock()
+
+}
+
 func PollSDLRenderer() {
 	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 		switch event.(type) {
@@ -95,17 +124,16 @@ func PollSDLRenderer() {
 }
 
 func PresentSurface() { // pass here the array to be updated
-	if err := g_renderer.Clear(); err != nil {
-		log.Fatal(err)
-	}
+	// if err := g_renderer.Clear(); err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	err := g_renderer.Copy(g_texture, nil, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// if err := g_renderer.Copy(g_texture, nil, nil); err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	g_renderer.Present()
-	sdl.Delay(2)
+	// g_renderer.Present()
+	g_window.UpdateSurface()
 }
 
 func InitializeRenderer(width int32, height int32) {
@@ -133,18 +161,18 @@ func InitializeRenderer(width int32, height int32) {
 	}
 
 	rect := sdl.Rect{0, 0, width, height}
-	surface.FillRect(&rect, 0xFFFF0000)
+	surface.FillRect(&rect, 0xFF000000)
 	g_window.UpdateSurface()
 	// Nothing here
 	// For 800 * 600 draw all pixels
-	g_texture, err = g_renderer.CreateTexture(sdl.PIXELFORMAT_RGB24, sdl.TEXTUREACCESS_STREAMING, width, height)
+	// g_texture, err = g_renderer.CreateTexture(sdl.PIXELFORMAT_RGB24, sdl.TEXTUREACCESS_STREAMING, width, height)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	go PollEvents()
-	// PollSDLRenderer()
+	PresentSurface()
+	PollSDLRenderer()
 }
 
 func StreamMandelbrot() {
