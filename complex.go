@@ -2,27 +2,29 @@ package main
 
 import (
 	"fmt"
-	"image"
-	"image/color"
-	"image/png"
 	"log"
 	"math"
-	"os"
-	"time"
+	"sync"
 
 	"github.com/Guthi/guthi_network/platform"
+	"github.com/Guthi/guthi_network/renderer"
 	"github.com/Guthi/guthi_network/utility"
 )
 
-var width int
-var height int
-
 var range_number int // 1 for 100 to 200 and false for 0 to 100
 var count int
+var present_mutex sync.Mutex
+
+const (
+	block_size = 8
+	width      = 512
+	height     = width
+)
 
 type MandelbrotParam struct {
-	Index         int
-	Row_completed int
+	// Provide 4 x 4 square box to render
+	X int
+	Y int
 }
 
 type Complex struct {
@@ -70,76 +72,78 @@ func does_diverge(c *Complex, radius float64, max_iter int) int {
 	return iter
 }
 
-func plot_mandelbrot() {
+func plot_mandelbrot(func_name string, pram interface{}, return_value interface{}) {
 	net_platform := platform.GetPlatform()
-	count++
-	if count == 2 {
-		im := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{width, height}})
-		for i := 0; i < width; i++ {
-			for j := 0; j < height; j++ {
-				c, err := net_platform.GetDataOfArray("mandelbrot", height*i+j)
-				if err != nil {
-					panic(err)
-				}
-				r := utility.Min(c.(Color).R*3, 255)
-				g := utility.Min(c.(Color).R*5, 255)
-				b := utility.Min(c.(Color).R*7, 255)
-				im.Set(i, j, color.RGBA{uint8(r), uint8(g), uint8(b), 255})
-			}
-			fmt.Printf("Index completed: %d\n", i)
-		}
 
-		output, _ := os.Create("img.png")
-		png.Encode(output, im)
+	params := pram.(MandelbrotParam)
+	fmt.Println("Returned across the function calls : X -> ", params.X, " Y -> ", params.Y)
+
+	present_mutex.Lock()
+	defer present_mutex.Unlock()
+	for i := params.X; i < params.X+block_size; i++ {
+		for j := params.Y; j < params.Y+block_size; j++ {
+			c, err := net_platform.GetDataOfArray("mandelbrot", height*i+j)
+			if err != nil {
+				panic(err)
+			}
+			r := byte(utility.Min(c.(Color).R*3, 255))
+			g := byte(utility.Min(c.(Color).R*5, 255))
+			b := byte(utility.Min(c.(Color).R*7, 255))
+
+			renderer.UpdateSurfaceDirectlyOnePoint(int32(i), int32(j), r, g, b)
+
+		}
 	}
+
+	renderer.PollSDLRenderer()
+	renderer.PresentSurface()
+	// fmt.Println("Callback function to plot mandelbrot was called")
 }
 
-func render_mandelbrot(param MandelbrotParam) {
-	range_number := param.Index
-	diff := height / 2
-	min := 0 + range_number*diff
-	max := diff + range_number*diff
+func render_mandelbrot(args_supplied interface{}) {
 	max_iter := 100
 	radius := 4.0
 
 	start := Complex{-2, -2}
 	end := Complex{1, 2}
 	net_platform := platform.GetPlatform()
+	filter := uint16(1)
+	if net_platform.Self_node.Socket.Port != 6969 {
+		filter = uint16(net_platform.Self_node.Socket.Port) - 7000 + 1
+	}
+	param := args_supplied.(MandelbrotParam) // the f**k is this syntax
+	fmt.Println(param)
+
 	platform.SetState("render_mandelbrot", param)
 
-	start_index := param.Row_completed
-
-	im := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{width, height}})
-	for x := start_index; x < width; x++ {
+	for x := param.X; x < param.X+block_size; x++ {
 		real := start.real + (float64(x)/float64(width))*(end.real-start.real)
-		for y := min; y < max; y++ {
+		for y := param.Y; y < param.Y+block_size; y++ {
 			imag := start.imag + (float64(y)/float64(height))*(end.imag-start.imag)
 			z := Complex{real, imag}
 			n_iter := does_diverge(&z, radius, max_iter)
 
 			color_element := uint16(utility.Min((float64(n_iter)-math.Log2(z.absolute()/float64(radius)))/float64(max_iter)*255, 255.0))
-			c := Color{color_element, utility.Min(255, color_element*2), utility.Min(255, color_element*3)}
-			err := net_platform.SetDataOfArray("mandelbrot", height*x+y, c)
+			color := Color{
+				color_element,
+				utility.Min(255, color_element*2/filter),
+				utility.Min(255, color_element*3),
+			}
+			err := net_platform.SetDataOfArray("mandelbrot", height*x+y, color)
 
 			if err != nil {
 				log.Printf("Index: %d\n", width*x+y)
 				panic(err)
 			}
-
-			r := utility.Min(c.R*3, 255)
-			g := utility.Min(c.R*5, 255)
-			b := utility.Min(c.R*7, 255)
-			im.Set(x, y, color.RGBA{uint8(r), uint8(g), uint8(b), 255})
 		}
 
-		param.Row_completed = x
-		platform.SetState("render_mandelbrot", param)
-		fmt.Printf("Index completed: %d\n", x)
-		time.Sleep(time.Millisecond * 50)
-		platform.SendIndexedArray("mandelbrot", height*x, height, net_platform)
+		// platform.SetState("render_mandelbrot", param)
+		// platform.SendIndexedArray("mandelbrot", height*x, block_size, net_platform)
 	}
 	// platform.Send_array_to_nodes("mandelbrot", net_platform)
-	output, _ := os.Create(fmt.Sprintf("mandelbrot_node_%d.png", param.Index))
-	png.Encode(output, im)
-	fmt.Println("Completed")
+	fmt.Println("Completed : ", param.X, " and ", param.Y)
+}
+
+func init() {
+	present_mutex = sync.Mutex{}
 }

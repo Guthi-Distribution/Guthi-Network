@@ -1,32 +1,12 @@
 package main
 
 import (
-	"GuthiNetwork/platform"
-	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"time"
+
+	"github.com/Guthi/guthi_network/platform"
 )
-
-type Config struct {
-	Name    string `json:"name"`
-	Address string `json:"address"`
-}
-
-func LoadConfiguration(file string) Config {
-	var config Config
-	configFile, err := os.Open(file)
-	defer configFile.Close()
-	if err != nil {
-		config.Name = ""
-		config.Address = ""
-		return config
-	}
-	jsonParser := json.NewDecoder(configFile)
-	jsonParser.Decode(&config)
-	return config
-}
 
 type Color struct {
 	R uint16

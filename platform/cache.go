@@ -1,16 +1,16 @@
 package platform
 
 import (
-	"GuthiNetwork/core"
-	"GuthiNetwork/events"
 	"time"
+
+	"github.com/Guthi/guthi_network/core"
 )
 
 // Implement a event queue here
 type Queue struct {
 	capacity uint
 	len      uint
-	data     []events.Events
+	// data     []events.Events
 }
 
 // single cache entry

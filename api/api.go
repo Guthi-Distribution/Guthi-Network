@@ -1,8 +1,7 @@
 package api
 
 import (
-	"GuthiNetwork/platform"
-
+	"github.com/Guthi/guthi_network/platform"
 	"github.com/gin-gonic/gin"
 )
 

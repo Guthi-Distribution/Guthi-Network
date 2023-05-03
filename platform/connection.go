@@ -66,7 +66,7 @@ func HandleConnectionInitiation(request []byte, net_platform *NetworkPlatform) e
 		return err
 	}
 	SendTableToNode(net_platform, payload.AddrFrom)
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 2)
 
 	dispatch_pending_call(payload.AddrFrom)
 	return nil
@@ -93,6 +93,39 @@ func HandleConnectionReply(request []byte, net_platform *NetworkPlatform) error 
 
 		if err != nil {
 			return err
+		}
+	}
+
+	if net_platform.config.ShareNodes {
+		SendConnectedNodesAddress(payload.AddrFrom)
+	}
+
+	return nil
+}
+
+func SendConnectedNodesAddress(addr string) {
+	var nodes_address []string
+	for _, node := range network_platform.Connected_nodes {
+		nodes_address = append(nodes_address, node.GetAddressString())
+	}
+	nodes := NodesInfo{
+		network_platform.GetNodeAddress(),
+		nodes_address,
+	}
+
+	sendDataToAddress(addr, append(CommandStringToBytes("nodes_to_connect"), GobEncode(nodes)...), network_platform)
+}
+
+func handleNodesInfoList(request []byte) error {
+	var payload NodesInfo
+	err := gob.NewDecoder(bytes.NewBuffer(request)).Decode(&payload)
+	if err != nil {
+		return err
+	}
+
+	for _, addr := range payload.Nodes {
+		if network_platform.get_node_from_string(addr) == -1 {
+			network_platform.ConnectToNode(addr)
 		}
 	}
 

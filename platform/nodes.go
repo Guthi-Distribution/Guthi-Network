@@ -234,6 +234,9 @@ func handleTCPConnection(request []byte, net_platform *NetworkPlatform) error {
 		handleFunctionCompletion(request[COMMAND_LENGTH:])
 		break
 
+	case "nodes_to_connect":
+		handleNodesInfoList(request[COMMAND_LENGTH:])
+
 	}
 
 	request = nil

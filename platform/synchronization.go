@@ -6,11 +6,13 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 )
 
 // TODO: Connection timeout feature complete??
 var pending_connection_time = make(map[string]uint64)
+var pending_connection_time_mutex sync.RWMutex
 
 // TODO: Need to add timestamp
 type EchoMessage struct {
@@ -30,7 +32,10 @@ func SendEchoMessage(addr string, net_platform *NetworkPlatform) error {
 		return err
 	}
 
+	pending_connection_time_mutex.Lock()
 	pending_connection_time[addr] = uint64(time.Now().Unix())
+	pending_connection_time_mutex.Unlock()
+
 	payload := EchoMessage{
 		AddrFrom:     net_platform.GetNodeAddress(),
 		ConnectionId: rand_num.Uint64(),
@@ -66,7 +71,9 @@ func HandleEchoReply(request []byte, net_platform *NetworkPlatform) error {
 			AddrFrom: net_platform.GetNodeAddress(),
 			IsReply:  true,
 		}
+		pending_connection_time_mutex.Lock()
 		pending_connection_time[payload.AddrFrom] = uint64(time.Now().Unix())
+		pending_connection_time_mutex.Unlock()
 		err := sendDataToAddress(payload.AddrFrom, append(CommandStringToBytes("echo_reply"), GobEncode(send_payload)...), net_platform)
 		if err != nil {
 			return err
@@ -74,9 +81,11 @@ func HandleEchoReply(request []byte, net_platform *NetworkPlatform) error {
 	}
 
 	// if the data is received delete it from the pending connection information
+	pending_connection_time_mutex.Lock()
 	if _, id := pending_connection_time[payload.AddrFrom]; id {
 		delete(pending_connection_time, payload.AddrFrom)
 	}
+	pending_connection_time_mutex.Unlock()
 	return nil
 }
 
@@ -86,10 +95,12 @@ func CheckForResponse(net_platform *NetworkPlatform) {
 		// if the response is not received in 10 seconds remove it from connected nodes
 		// handle node failure
 		if curr_time-send_time > 10 {
+			pending_connection_time_mutex.Lock()
 			if _, id := pending_connection_time[node]; id {
 				delete(pending_connection_time, node)
 				handle_node_failure(node)
 			}
+			pending_connection_time_mutex.Unlock()
 		}
 	}
 }

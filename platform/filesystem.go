@@ -1,11 +1,12 @@
 package platform
 
 import (
-	"GuthiNetwork/core"
 	"bytes"
 	"encoding/gob"
 	"errors"
 	"fmt"
+
+	"github.com/Guthi/guthi_network/core"
 )
 
 func SendGetFileSystem(addr string, net_platform *NetworkPlatform) error {

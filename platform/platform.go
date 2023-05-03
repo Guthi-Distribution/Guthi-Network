@@ -1,8 +1,6 @@
 package platform
 
 import (
-	"GuthiNetwork/core"
-	"GuthiNetwork/lib"
 	"bytes"
 	"encoding/gob"
 	"errors"
@@ -11,10 +9,14 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/Guthi/guthi_network/core"
+	"github.com/Guthi/guthi_network/lib"
+	"github.com/Guthi/guthi_network/utility"
 )
 
 type NodeFailureEventHandler func(NetworkNode) // interface so that use can pass it's own structures
-type FunctionExecutionCompletionHandler func() // interface so that use can pass it's own structures
+type FunctionExecutionCompletionHandler func(string, interface{}, interface{})
 
 /*
 Site struct for suzuki kasami synchronization
@@ -84,9 +86,11 @@ type NetworkPlatform struct {
 	Connected_nodes    []NetworkNode `json:"connected_nodes"` // nodes that are connected right noe
 	Connection_History []string      `json:"history"`         // nodes information that are prevoisly connected
 	Connection_caches  []CacheEntry  `json:"cache_entry"`
+	config             utility.Config
 
 	symbol_table_mutex   sync.RWMutex
 	code_execution_mutex sync.Mutex
+	function_state_mutex sync.RWMutex
 
 	// events
 	node_failure_event_handler NodeFailureEventHandler
@@ -95,7 +99,7 @@ type NetworkPlatform struct {
 
 var network_platform *NetworkPlatform
 
-func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatform, error) {
+func CreateNetworkPlatform(config utility.Config) (*NetworkPlatform, error) {
 	// only one struct is possible, need only one value
 	if network_platform != nil {
 		return network_platform, nil
@@ -103,12 +107,12 @@ func CreateNetworkPlatform(name string, address string, port int) (*NetworkPlatf
 	network_platform = &NetworkPlatform{}
 
 	var err error
-	if address == "" {
-		address = "127.0.0.1"
-	} else if address == "f" {
-		address = GetNodeAddress()
+	if config.Address == "" {
+		config.Address = "127.0.0.1"
+	} else if config.Address == "f" {
+		config.Address = GetNodeAddress()
 	}
-	network_platform.Self_node, err = CreateNetworkNode(name, address, port)
+	network_platform.Self_node, err = CreateNetworkNode(config.Name, config.Address, config.Port)
 	network_platform.symbol_table = make(lib.SymbolTable)
 	network_platform.symbol_table_mutex = sync.RWMutex{}
 	network_platform.code_execution_mutex = sync.Mutex{}
@@ -143,6 +147,9 @@ func (net_platform *NetworkPlatform) BindNodeFailureEventHandler(handler NodeFai
 	net_platform.node_failure_event_handler = handler
 }
 
+/*
+Binds handler as a function completion handler for function name "func_name"
+*/
 func (net_platform *NetworkPlatform) BindFunctionCompletionEventHandler(func_name string, handler FunctionExecutionCompletionHandler) {
 	net_platform.function_completed[func_name] = handler
 }
@@ -222,9 +229,21 @@ func (self *NetworkPlatform) knows(addr string) bool {
 	return false
 }
 
+/*
+Return index of the node with address "addr"
+*/
 func (self *NetworkPlatform) get_node_from_string(addr string) int {
 	for i, node := range self.Connected_nodes {
 		if node.Socket.String() == addr {
+			return i
+		}
+	}
+	return -1
+}
+
+func (self *NetworkPlatform) get_cache_from_string(addr string) int {
+	for i, node := range self.Connection_caches {
+		if node.Node_ref.GetAddressString() == addr {
 			return i
 		}
 	}
@@ -254,6 +273,8 @@ func (net_platform *NetworkPlatform) bindFunctionState(node *NetworkNode, func_n
 		return errors.New(fmt.Sprintf("Function %s no registered\n", func_name))
 	}
 
+	net_platform.function_state_mutex.Lock()
+	defer net_platform.function_state_mutex.Unlock()
 	if node.function_state == nil {
 		node.function_state = make(map[string]interface{})
 	}
@@ -285,12 +306,14 @@ func handleFunctionState(request []byte) {
 	net_platform.bindFunctionState(&net_platform.Connected_nodes[node], payload.FuncName, payload.State)
 }
 
-func (net_platform *NetworkPlatform) GetFunctionState(node *NetworkNode, func_name string, state interface{}) error {
+func (net_platform *NetworkPlatform) SetFunctionState(node *NetworkNode, func_name string, state interface{}) error {
 	_, exists := globalFuncStore[func_name]
 	if !exists {
 		return errors.New(fmt.Sprintf("Function %s no registered\n", func_name))
 	}
 
+	net_platform.function_state_mutex.Lock()
+	defer net_platform.function_state_mutex.Unlock()
 	node.function_state[func_name] = state
 	return nil
 }
@@ -520,6 +543,7 @@ func init() {
 	gob.Register(array{})
 	gob.Register(VariableInfo{})
 	pending_dispatch_mutex = sync.Mutex{}
+	pending_connection_time_mutex = sync.RWMutex{}
 }
 
 /*
